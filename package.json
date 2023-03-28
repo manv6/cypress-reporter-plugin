@@ -6,6 +6,9 @@
   "scripts": {
     "test": "test"
   },
+  "publishConfig": {
+    "@testerloop:registry": "https://npm.pkg.github.com"
+  },
   "author": "Overloop Ltd",
   "license": "ISC",
   "dependencies": {
