@@ -1,2 +1,5 @@
 node_modules
-
+cypress/logs
+cypress/cypress
+cypress/downloads
+cypress/screenshots

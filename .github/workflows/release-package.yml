@@ -1,4 +1,4 @@
-name: Testerloop Reporter Package
+name: Build & Publish Testerloop Reporter Package 
 
 on:
   release:
@@ -27,8 +27,33 @@ jobs:
           node-version: 16
           registry-url: https://npm.pkg.github.com/
       - run: npm ci
+
       - name: Login to GitHub Package Registry
         run: echo "//npm.pkg.github.com/:_authToken=${{secrets.GITHUB_TOKEN}}" >> ~/.npmrc
+
+      - name: Update package list
+        run: sudo apt-get update
+
+      - name: Install chromium browser
+        run: |
+         sudo apt-get install chromium-browser
+         which chromium
+         which chromium-browser
+        #  sudo rm /usr/local/share/chromium/chrome-linux/chrome
+        #  sudo mv /usr/bin/chromium-browser /usr/bin/chromium
+
+
+      - name: List Chromium installation folder
+        run: |
+          ls -la /usr/bin/
+          ls -la /usr/local/bin/
+          ls -la /snap/bin/
+      - name: Install Cypress and run tests
+        run: |
+          cd cypress
+          npm install
+          npm test
+          # sudo ln -sf /usr/bin/chromium-browser /usr/local/share/chromium/chrome-linux/chrome
       - run: npm publish
         env:
           NODE_AUTH_TOKEN: ${{secrets.GITHUB_TOKEN}}

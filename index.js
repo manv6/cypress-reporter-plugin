@@ -78,7 +78,7 @@ const install = (on, { ...reporterOptions }) => {
       config.startsWith("--remote-debugging-port")
     );
 
-    if (browser.name === "chromium") {
+    if (browser.name === "chromium" || browser.name === "chrome") {
       launchOptions.args.push(
         "--hide-scrollbars",
         "--ignore-certificate-errors",
@@ -182,116 +182,120 @@ const install = (on, { ...reporterOptions }) => {
     },
 
     connect: async () => {
-      try {
-        debugLog(
-          `Attempting to connect to Chrome Debugging Protocol on port ${portForCDP}`
-        );
+      async function tryConnect() {
+        try {
+          debugLog(
+            `Attempting to connect to Chrome Debugging Protocol on port ${portForCDP}`
+          );
 
-        cdp = await connect({
-          port: portForCDP,
-          host: "127.0.0.1",
-        });
-
-        debugLog("Connected to Chrome Debugging Protocol");
-        //----------------------------------------------------------------
-        /** captures logs from console.X calls */
-        await cdp.Runtime.enable();
-        await cdp.Page.enable();
-        await cdp.Network.enable();
-
-        cdp.Runtime.consoleAPICalled(logConsole);
-        /** captures logs from network calls */
-        cdp.Page.frameStartedLoading((params) =>
-          writeHarLogs(params, "Page.frameStartedLoading")
-        );
-        cdp.Page.frameRequestedNavigation((params) =>
-          writeHarLogs(params, "Page.frameRequestedNavigation")
-        );
-        cdp.Page.navigatedWithinDocument((params) =>
-          writeHarLogs(params, "Page.navigatedWithinDocument")
-        );
-        cdp.Network.requestWillBeSent((params) =>
-          writeHarLogs(params, "Network.requestWillBeSent")
-        );
-        cdp.Network.requestServedFromCache((params) =>
-          writeHarLogs(params, "Network.requestServedFromCache")
-        );
-        cdp.Network.requestWillBeSentExtraInfo((params) =>
-          writeHarLogs(params, "Network.requestWillBeSentExtraInfo")
-        );
-        cdp.Network.responseReceivedExtraInfo((params) =>
-          writeHarLogs(params, "Network.responseReceivedExtraInfo")
-        );
-        cdp.Network.responseReceived(async (params) => {
-          writeHarLogs(params, "Network.responseReceived");
-          const response = params.response;
-          const requestId = params.requestId;
-          if (
-            response.status !== 204 &&
-            response.headers.location == null &&
-            !response.mimeType.includes("image") &&
-            !response.mimeType.includes("audio") &&
-            !response.mimeType.includes("video")
-          ) {
-            cdp.Network.loadingFinished(async (loadingFinishedParams) => {
-              if (loadingFinishedParams.requestId === requestId) {
-                try {
-                  const responseBody = await cdp.send(
-                    "Network.getResponseBody",
-                    {
-                      requestId,
-                    }
-                  );
-                  params.response = {
-                    ...params.response,
-                    body: Buffer.from(
-                      responseBody.body,
-                      responseBody.base64Encoded ? "base64" : undefined
-                    ).toString(),
-                  };
-                } catch (err) {
-                  // Fail silently, so we don't stop the execution
-                }
-              }
-            });
-          }
-        });
-        cdp.Network.dataReceived((params) =>
-          writeHarLogs(params, "Network.dataReceived")
-        );
-        cdp.Network.loadingFinished((params) =>
-          writeHarLogs(params, "Network.loadingFinished")
-        );
-        cdp.Page.loadEventFired((params) =>
-          writeHarLogs(params, "Page.loadEventFired")
-        );
-        cdp.Page.domContentEventFired((params) =>
-          writeHarLogs(params, "Page.domContentEventFired")
-        );
-        cdp.Page.frameAttached((params) =>
-          writeHarLogs(params, "Page.frameAttached")
-        );
-        cdp.Network.loadingFailed((params) =>
-          writeHarLogs(params, "Network.loadingFailed")
-        );
-        cdp.Network.resourceChangedPriority((params) =>
-          writeHarLogs(params, "Network.resourceChangedPriority")
-        );
-        // cdp.Page.lifecycleEvent(writeHarToFile);
-        //----------------------------------------------------------------
-        cdp.on("disconnect", () => {
-          debugLog("Chrome Debugging Protocol disconnected");
-          writeConsoleLogsToFile();
-          const har = harFromMessages(harLogs, {
-            includeTextFromResponseBody: true,
+          cdp = await connect({
+            port: portForCDP,
+            host: "127.0.0.1",
           });
-          writeHarToFile(har);
-        });
-      } catch (err) {
-        console.error("Failed to connect to Chrome - ", err);
-        setTimeout(tryConnect, 1000);
+
+          debugLog("Connected to Chrome Debugging Protocol");
+          //----------------------------------------------------------------
+          /** captures logs from console.X calls */
+          await cdp.Runtime.enable();
+          await cdp.Page.enable();
+          await cdp.Network.enable();
+
+          cdp.Runtime.consoleAPICalled(logConsole);
+          /** captures logs from network calls */
+          cdp.Page.frameStartedLoading((params) =>
+            writeHarLogs(params, "Page.frameStartedLoading")
+          );
+          cdp.Page.frameRequestedNavigation((params) =>
+            writeHarLogs(params, "Page.frameRequestedNavigation")
+          );
+          cdp.Page.navigatedWithinDocument((params) =>
+            writeHarLogs(params, "Page.navigatedWithinDocument")
+          );
+          cdp.Network.requestWillBeSent((params) =>
+            writeHarLogs(params, "Network.requestWillBeSent")
+          );
+          cdp.Network.requestServedFromCache((params) =>
+            writeHarLogs(params, "Network.requestServedFromCache")
+          );
+          cdp.Network.requestWillBeSentExtraInfo((params) =>
+            writeHarLogs(params, "Network.requestWillBeSentExtraInfo")
+          );
+          cdp.Network.responseReceivedExtraInfo((params) =>
+            writeHarLogs(params, "Network.responseReceivedExtraInfo")
+          );
+          cdp.Network.responseReceived(async (params) => {
+            writeHarLogs(params, "Network.responseReceived");
+            const response = params.response;
+            const requestId = params.requestId;
+            if (
+              response.status !== 204 &&
+              response.headers.location == null &&
+              !response.mimeType.includes("image") &&
+              !response.mimeType.includes("audio") &&
+              !response.mimeType.includes("video")
+            ) {
+              cdp.Network.loadingFinished(async (loadingFinishedParams) => {
+                if (loadingFinishedParams.requestId === requestId) {
+                  try {
+                    const responseBody = await cdp.send(
+                      "Network.getResponseBody",
+                      {
+                        requestId,
+                      }
+                    );
+                    params.response = {
+                      ...params.response,
+                      body: Buffer.from(
+                        responseBody.body,
+                        responseBody.base64Encoded ? "base64" : undefined
+                      ).toString(),
+                    };
+                  } catch (err) {
+                    // Fail silently, so we don't stop the execution
+                  }
+                }
+              });
+            }
+          });
+          cdp.Network.dataReceived((params) =>
+            writeHarLogs(params, "Network.dataReceived")
+          );
+          cdp.Network.loadingFinished((params) =>
+            writeHarLogs(params, "Network.loadingFinished")
+          );
+          cdp.Page.loadEventFired((params) =>
+            writeHarLogs(params, "Page.loadEventFired")
+          );
+          cdp.Page.domContentEventFired((params) =>
+            writeHarLogs(params, "Page.domContentEventFired")
+          );
+          cdp.Page.frameAttached((params) =>
+            writeHarLogs(params, "Page.frameAttached")
+          );
+          cdp.Network.loadingFailed((params) =>
+            writeHarLogs(params, "Network.loadingFailed")
+          );
+          cdp.Network.resourceChangedPriority((params) =>
+            writeHarLogs(params, "Network.resourceChangedPriority")
+          );
+          // cdp.Page.lifecycleEvent(writeHarToFile);
+          //----------------------------------------------------------------
+          cdp.on("disconnect", () => {
+            debugLog("Chrome Debugging Protocol disconnected");
+            writeConsoleLogsToFile();
+            const har = harFromMessages(harLogs, {
+              includeTextFromResponseBody: true,
+            });
+            writeHarToFile(har);
+          });
+        } catch (err) {
+          console.error("Failed to connect to Chrome - ", err);
+          setTimeout(tryConnect, 1000);
+        }
+        return cdp;
       }
-      return cdp;
+      tryConnect();
+      return null;
     },
 
     log: (message) => {
