@@ -17,8 +17,6 @@ async function setupNodeEvents(on, config) {
 }
 module.exports = defineConfig({
   projectId: "eh6mxr",
-  viewportWidth: 1280,
-  viewportHeight: 1024,
   videoCompression: 20,
   e2e: {
     supportFile: "./support/e2e.{js,jsx,ts,tsx}",

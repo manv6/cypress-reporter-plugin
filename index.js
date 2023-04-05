@@ -88,8 +88,7 @@ const install = (on, options) => {
         "--disable-gpu",
         "--no-sandbox",
         "--no-zygote",
-        "--single-process",
-        "--window-size=1280,1024"
+        "--single-process"
       );
     }
 
@@ -395,20 +394,26 @@ const install = (on, options) => {
       return null;
     },
     cropScreenshots: (path) => {
+      // cypress screenshot is always 800 * 600 whatever is the viewport
       const cropConfig = { width: 820, height: 630, top: 0, left: 450 };
 
       const dir = `./logs/${path}/screenshots/`;
-      const files = fs.readdirSync(dir);
-      files.forEach((file) => {
-        PNGCrop.crop(
-          `./logs/${path}/screenshots/` + file,
-          `./logs/${path}/screenshots/` + file,
-          cropConfig,
-          function (err) {
-            if (err) throw new Error("Failed to crop screenshots");
-          }
-        );
-      });
+      if (fs.existsSync(dir)) {
+        const files = fs.readdirSync(dir);
+        if (files.length > 0) {
+          files.forEach((file) => {
+            PNGCrop.crop(
+              `./logs/${path}/screenshots/` + file,
+              `./logs/${path}/screenshots/` + file,
+              cropConfig,
+              function (err) {
+                if (err) throw new Error("Failed to crop screenshots");
+              }
+            );
+          });
+        }
+      }
+
       return null;
     },
   });
