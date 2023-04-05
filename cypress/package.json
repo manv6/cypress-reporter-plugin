@@ -6,6 +6,7 @@
     "scripts": {
         "regression": "npx cypress run --spec regression/otf.spec.js",
         "test:single": "npx cypress run --spec e2e/overloop.feature --browser /usr/bin/chromium --headless",
+        "test:local": "npm run clear:logs && npx cypress run --spec e2e --browser chromium --headless",
         "clear:logs": "rm -rf logs",
         "test": "DEBUG=cypress:*  npm run clear:logs && npm run test:single ; npm run regression"
     },
@@ -28,29 +29,9 @@
     },
     "homepage": "https://github.com/overloop-io/cypress-poc#readme",
     "dependencies": {
-        "@aws-sdk/client-dynamodb": "^3.241.0",
-        "@aws-sdk/client-lambda": "^3.226.0",
-        "@aws-sdk/client-s3": "^3.245.0",
-        "@aws-sdk/rds-signer": "^3.252.0",
-        "@badeball/cypress-cucumber-preprocessor": "^15.0.0",
-        "@cypress/browserify-preprocessor": "^3.0.2",
-        "@types/har-format": "^1.2.10",
-        "chrome-har": "^0.13.0",
-        "chrome-remote-interface": "^0.31.3",
-        "devtools-protocol": "^0.0.1087818"
-    },
-    "devDependencies": {
-        "@neuralegion/cypress-har-generator": "5.12.1",
-        "aws-sdk": "^2.1294.0",
-        "cli-progress": "^3.11.2",
-        "colors": "^1.4.0",
-        "cucumber-cypress-slicer": "^3.0.0",
-        "cypress": "12.8.1",
-        "fs-extra": "^11.1.0",
-        "last-commit-log": "^3.2.0",
-        "path": "^0.12.7",
-        "pg": "^8.8.0",
-        "s3-sync-client": "^3.0.3",
-        "uuid": "^9.0.0"
+        "@badeball/cypress-cucumber-preprocessor": "15.0.0",
+        "@cypress/browserify-preprocessor": "3.0.2",
+        "@testerloop/cypress-reporter-plugin": "^1.0.13",
+        "cypress": "12.8.1"
     }
 }

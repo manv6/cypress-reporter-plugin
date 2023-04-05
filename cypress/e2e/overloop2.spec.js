@@ -9,7 +9,7 @@ it("Check overloop contact details page", () => {
   cy.contains("Submit").should("be.disabled");
 });
 
-it("Check overloop contact details page", () => {
+it("Check overloop contact details page A", () => {
   cy.visit("https://overloop.io/");
   cy.get(".Header-nav-item").contains("Contact").click();
   cy.get('input[name="fname"]').type("testName");

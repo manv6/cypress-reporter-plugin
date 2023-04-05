@@ -19,17 +19,20 @@ before(() => {
   cy.task("screenshot");
 });
 
-Cypress.on("command:enqueued", (options) => {
-  if (options.name === "visit") {
-    cy.task("startScreenshots");
-  }
+beforeEach(() => {
+  resetData();
+  cy.task("clearReporterData");
+  cy.task("startScreenshots");
+  cy.task("generateRequestId").then((id) => {
+    requestId = id;
+    testsCount++;
+    testsMap.push({
+      requestId: requestId,
+      testSequence: testsCount,
+      spec: { file: Cypress.spec, test: Cypress.currentTest },
+    });
+  });
 });
-
-const argsForSnapshotToIgnore = [
-  "cypress-cucumber-preprocessor:test-step-started",
-  "saveCypressOutput",
-  "connect",
-];
 
 Cypress.on("uncaught:exception", (err, runnable) => {
   // returning false here prevents Cypress from
@@ -54,8 +57,21 @@ let firstVisitUrl;
 let cypressCommands = [];
 let snapshotsMapArray = [];
 let snapshotMetaDataArray = [];
+let testsMap = [];
 let snapshotID = 0;
 let subjectObj = {};
+let requestId;
+let testsCount = 0;
+
+function resetData() {
+  firstVisit = true;
+  firstVisitUrl;
+  cypressCommands = [];
+  snapshotsMapArray = [];
+  snapshotMetaDataArray = [];
+  snapshotID = 0;
+  subjectObj = {};
+}
 
 Cypress.on("command:start", ({ attributes }) => {
   // Grab the latest snapshot
@@ -144,8 +160,9 @@ Cypress.on("log:changed", async (options) => {
   }
 });
 
-after(() => {
-  cy.task("stopScreenshots");
+afterEach(() => {
+  cy.task("pauseScreenshots");
+
   cypressCommands = sortArrayByTimestamp(cypressCommands);
   if (snapshotsMapArray.length > 0) {
     mapSnapshotID(cypressCommands, snapshotsMapArray);
@@ -153,11 +170,19 @@ after(() => {
   cy.task("saveCypressOutput", {
     contents: cypressCommands,
     fileName: "cypress/out.json",
+    folderName: requestId,
   });
   cy.task("saveCypressOutput", {
     contents: snapshotMetaDataArray,
     fileName: "snapshots/snapshot-metadata.json",
+    folderName: requestId,
   });
-  cy.task("saveScreenshots");
-  cy.task("cropScreenshots");
+  cy.task("saveScreenshots", requestId);
+  cy.task("writeConsoleLogsToFile", requestId);
+  cy.task("writeHarToFile", requestId);
+  cy.task("cropScreenshots", requestId);
+});
+
+after(() => {
+  cy.task("writeTestsMapToFile", testsMap);
 });

@@ -8,17 +8,15 @@ async function setupNodeEvents(on, config) {
   on("file:preprocessor", browserify.default(config));
   install(on, {
     executeFrom: "local",
-    uploadResultsToS3: false,
+    uploadResultsToS3: true,
     s3BucketName: "otf-lambda-results",
     customResultsPath: "custom/results/",
-    runId: process.env.RUN_ID,
-    requestId: process.env.REQUEST_ID,
   });
 
   return on, config;
 }
 module.exports = defineConfig({
-  projectId: "u9ja7g",
+  projectId: "eh6mxr",
   viewportWidth: 1280,
   viewportHeight: 1024,
   videoCompression: 20,

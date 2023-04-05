@@ -2,16 +2,17 @@
 // Stores the run results, console logs and har network information on the after event
 // Holds the logic for the cdp connection
 
-reporterOptions = {
-  runId: "",
-  requestId: "",
+const reporterOptions = {
+  runId: process.env.RUN_ID || "set_the_env_variable",
   s3BucketName: "",
   executeFrom: "local",
   uploadResultsToS3: false,
 };
 
-const install = (on, { ...reporterOptions }) => {
-  console.log("Reporter options: ", { ...reporterOptions });
+const install = (on, options) => {
+  const mergedOptions = { ...reporterOptions, ...options };
+
+  console.log("Testerloop reporter options: ", mergedOptions);
   const fs = require("fs");
   const fse = require("fs-extra");
   const { promisify } = require("util");
@@ -21,6 +22,7 @@ const install = (on, { ...reporterOptions }) => {
   const PNGCrop = require("png-crop");
   const { S3Client } = require("@aws-sdk/client-s3");
   const S3SyncClient = require("s3-sync-client");
+  const { v4 } = require("uuid");
 
   let portForCDP;
   let cdp;
@@ -29,6 +31,7 @@ const install = (on, { ...reporterOptions }) => {
   let harLogs = [];
   let images = [];
   let takeScreenshots;
+  let counter = Math.floor(Math.random() * 1000000 + 1);
   let stopScreenshots = false;
   let startScreenshots = false;
 
@@ -124,27 +127,45 @@ const install = (on, { ...reporterOptions }) => {
     }
   }
 
-  async function writeHarToFile(har) {
-    const jsonString = JSON.stringify(har);
-
-    // Write the JSON to a file
-    const harPath = "./logs/har";
-    const fileName = "network-events.har";
-
-    fse.outputFileSync(`${harPath}/${fileName}`, jsonString);
-  }
-
-  async function writeConsoleLogsToFile() {
-    const jsonString = JSON.stringify(messageLog);
-
-    // Write the JSON to a file
-    const consoleLogsPath = "./logs/console";
-    const fileName = "console-logs.txt";
-
-    fse.outputFileSync(`${consoleLogsPath}/${fileName}`, jsonString);
-  }
-
   on("task", {
+    generateRequestId: () => {
+      if (reporterOptions.requestId !== undefined) {
+        return reporterOptions.requestId;
+      } else return v4();
+    },
+    async writeTestsMapToFile(testsMap) {
+      const jsonString = JSON.stringify(testsMap);
+      let x = counter;
+      // Write the JSON to a file
+      const testsMapPath = `./logs/results/`;
+      const fileName = `testsMap${x}.json`;
+      fse.outputFileSync(`${testsMapPath}/${fileName}`, jsonString);
+      return null;
+    },
+
+    async writeConsoleLogsToFile(path) {
+      const jsonString = JSON.stringify(messageLog);
+
+      // Write the JSON to a file
+      const consoleLogsPath = `./logs/${path}/console`;
+      const fileName = "console-logs.txt";
+      fse.outputFileSync(`${consoleLogsPath}/${fileName}`, jsonString);
+      return null;
+    },
+
+    async writeHarToFile(path) {
+      const har = harFromMessages(harLogs, {
+        includeTextFromResponseBody: true,
+      });
+      const jsonString = JSON.stringify(har);
+
+      // Write the JSON to a file
+      const harPath = `./logs/${path}/har`;
+      const fileName = "network-events.har";
+
+      fse.outputFileSync(`${harPath}/${fileName}`, jsonString);
+      return null;
+    },
     // @TODO
     saveResource: async ({
       outputFolder,
@@ -282,11 +303,6 @@ const install = (on, { ...reporterOptions }) => {
           //----------------------------------------------------------------
           cdp.on("disconnect", () => {
             debugLog("Chrome Debugging Protocol disconnected");
-            writeConsoleLogsToFile();
-            const har = harFromMessages(harLogs, {
-              includeTextFromResponseBody: true,
-            });
-            writeHarToFile(har);
           });
         } catch (err) {
           console.error("Failed to connect to Chrome - ", err);
@@ -327,7 +343,7 @@ const install = (on, { ...reporterOptions }) => {
       const blob = JSON.stringify(obj.contents);
 
       try {
-        fse.outputFileSync(`./logs/${obj.fileName}`, blob);
+        fse.outputFileSync(`./logs/${obj.folderName}/${obj.fileName}`, blob);
       } catch (err) {
         console.log(`Error saving output file '${obj.fileName}'`, err.message);
       }
@@ -352,14 +368,22 @@ const install = (on, { ...reporterOptions }) => {
       clearInterval(takeScreenshots);
       return null;
     },
-
     startScreenshots: () => {
       startScreenshots = true;
       return null;
     },
-    saveScreenshots: () => {
-      // Write the JSON to a file
-      const screenshotsPath = "./logs/screenshots";
+    pauseScreenshots: () => {
+      startScreenshots = false;
+      return null;
+    },
+    clearReporterData: () => {
+      messageLog = [];
+      harLogs = [];
+      images = [];
+      return null;
+    },
+    saveScreenshots: (path) => {
+      const screenshotsPath = `./logs/${path}/screenshots`;
 
       for (const image of images) {
         fse.outputFileSync(
@@ -370,15 +394,15 @@ const install = (on, { ...reporterOptions }) => {
       }
       return null;
     },
-    cropScreenshots: () => {
+    cropScreenshots: (path) => {
       const cropConfig = { width: 820, height: 630, top: 0, left: 450 };
 
-      const dir = "./logs/screenshots/";
+      const dir = `./logs/${path}/screenshots/`;
       const files = fs.readdirSync(dir);
       files.forEach((file) => {
         PNGCrop.crop(
-          "./logs/screenshots/" + file,
-          "./logs/screenshots/" + file,
+          `./logs/${path}/screenshots/` + file,
+          `./logs/${path}/screenshots/` + file,
           cropConfig,
           function (err) {
             if (err) throw new Error("Failed to crop screenshots");
@@ -405,11 +429,11 @@ const install = (on, { ...reporterOptions }) => {
     if (reporterOptions.uploadResultsToS3 === true) {
       await sendFilesToS3(
         videosFolder,
-        `s3://${reporterOptions.s3BucketName}/${reporterOptions.customResultsPath}${reporterOptions.runId}/${reporterOptions.requestId}/video`
+        `s3://${reporterOptions.s3BucketName}/${reporterOptions.customResultsPath}${reporterOptions.runId}/video`
       );
       await sendFilesToS3(
         logsFolder,
-        `s3://${reporterOptions.s3BucketName}/${reporterOptions.customResultsPath}${reporterOptions.runId}/${reporterOptions.requestId}`
+        `s3://${reporterOptions.s3BucketName}/${reporterOptions.customResultsPath}${reporterOptions.runId}`
       );
 
       async function sendFilesToS3(localPath, s3Path) {
@@ -425,18 +449,34 @@ const install = (on, { ...reporterOptions }) => {
       }
     }
   }
-  on("after:run", async (attributes) => {
-    const blob = JSON.stringify(attributes);
-    try {
-      fse.outputFileSync("./logs/cypress/results.json", blob);
-    } catch (err) {
-      console.log("Error saving cypress durartion", err.message);
-    }
+
+  on("after:run", async () => {
     try {
       await uploadFilesToS3();
     } catch (err) {
       console.log("Error uploading files to s3", err.message);
     }
+  });
+
+  on("after:spec", async (spec, results) => {
+    let x = counter;
+
+    try {
+      const testMap = JSON.parse(
+        fse.readFileSync(`./logs/results/testsMap${x}.json`, "utf8")
+      );
+
+      for (const { testSequence, requestId } of testMap) {
+        const test = results.tests[testSequence - 1];
+        const runs = [{ tests: [test], testId: requestId }];
+        const resultFile = { runs };
+        const filePath = `./logs/${requestId}/cypress/results.json`;
+        fse.writeFileSync(filePath, JSON.stringify(resultFile));
+      }
+    } catch (err) {
+      console.log("Error saving cypress durartion", err.message);
+    }
+    counter++;
   });
 };
 
