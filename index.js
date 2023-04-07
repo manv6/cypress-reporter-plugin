@@ -2,17 +2,18 @@
 // Stores the run results, console logs and har network information on the after event
 // Holds the logic for the cdp connection
 
-const reporterOptions = {
+let reporterOptions = {
   runId: process.env.RUN_ID || "set_the_env_variable",
+  requestId: process.env.REQUEST_ID || "set_the_env_variable",
   s3BucketName: "",
   executeFrom: "local",
+  customResultsPath: "",
   uploadResultsToS3: false,
 };
 
 const install = (on, options) => {
-  const mergedOptions = { ...reporterOptions, ...options };
-
-  console.log("Testerloop reporter options: ", mergedOptions);
+  reporterOptions = { ...reporterOptions, ...options };
+  console.log("Testerloop reporter options: ", reporterOptions);
   const fs = require("fs");
   const fse = require("fs-extra");
   const { promisify } = require("util");
@@ -30,6 +31,7 @@ const install = (on, options) => {
   let messageLog = [];
   let harLogs = [];
   let images = [];
+  let failedTests = [];
   let takeScreenshots;
   let counter = Math.floor(Math.random() * 1000000 + 1);
   let stopScreenshots = false;
@@ -475,6 +477,13 @@ const install = (on, options) => {
         const test = results.tests[testSequence - 1];
         const runs = [{ tests: [test], testId: requestId }];
         const resultFile = { runs };
+        if (test.state === "failed") {
+          failedTests.push({
+            testId: requestId,
+            title: test.title.slice(-1)[0],
+            status: "failed",
+          });
+        }
         const filePath = `./logs/${requestId}/cypress/results.json`;
         fse.writeFileSync(filePath, JSON.stringify(resultFile));
       }

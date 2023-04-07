@@ -13,7 +13,7 @@ before(() => {
 });
 
 it('Test otf test output files - "out.json"', () => {
-  cy.readFile("logs/cypress/out.json").then((contents) => {
+  cy.readFile("logs/123/cypress/out.json").then((contents) => {
     console.log(contents);
     assert.equal(contents.length, outPutExpectedLengths.outFileCommands);
     assert.exists(contents[0].options.name);
@@ -33,7 +33,7 @@ it('Test otf test output files - "out.json"', () => {
 });
 
 it('Test otf test output files - "snapshot-metadata.json"', () => {
-  cy.readFile("logs/snapshots/snapshot-metadata.json").then((contents) => {
+  cy.readFile("logs/123/snapshots/snapshot-metadata.json").then((contents) => {
     console.log(contents);
     assert.equal(contents.length, outPutExpectedLengths.snapshotMetadata);
 
@@ -50,7 +50,7 @@ it('Test otf test output files - "snapshot-metadata.json"', () => {
 });
 
 it('Test otf test output files - "results.json"', () => {
-  cy.readFile("logs/cypress/results.json").then((contents) => {
+  cy.readFile("logs/123/cypress/results.json").then((contents) => {
     console.log("length", contents);
     assert.exists(contents.status);
     assert.exists(contents.startedTestsAt);
@@ -73,7 +73,7 @@ it('Test otf test output files - "results.json"', () => {
 });
 
 it('Test otf test output files - "console-logs.txt"', () => {
-  cy.readFile("logs/console/console-logs.txt").then((contents) => {
+  cy.readFile("logs/123/console/console-logs.txt").then((contents) => {
     assert.equal(contents.length, outPutExpectedLengths.consoleLogs);
   });
 });

@@ -1,11 +1,11 @@
 {
   "name": "cypress-tests-testerloop",
-  "version": "1.0.11",
+  "version": "1.0.14",
   "description": "Cypress Tests for Testerloop",
   "main": "index.js",
   "scripts": {
     "regression": "npx cypress run --spec regression/otf.spec.js",
-    "test:single": "npx cypress run --spec e2e/overloop.feature --browser chromium --headless",
+    "test:single": "npx cypress run --spec e2e/overloop.feature --browser /usr/bin/chromium --headless",
     "test:local": "npm run clear:logs && npx cypress run --spec e2e --browser chromium --headless",
     "clear:logs": "rm -rf logs",
     "test": "DEBUG=cypress:*  npm run clear:logs && npm run test:single ; npm run regression"
