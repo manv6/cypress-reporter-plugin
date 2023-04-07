@@ -4,7 +4,7 @@
 
 let reporterOptions = {
   runId: process.env.RUN_ID || "set_the_env_variable",
-  requestId: process.env.REQUEST_ID || "set_the_env_variable",
+  requestId: process.env.REQUEST_ID,
   s3BucketName: "",
   executeFrom: "local",
   customResultsPath: "",
@@ -423,6 +423,20 @@ const install = (on, options) => {
   // Load the chrome options inside the event
   on("before:browser:launch", browserLaunchHandler);
 
+  function createFailedTestsFile() {
+    console.log("---> Creating failed results test file");
+    if (failedTests.length > 0) {
+      try {
+        fse.outputFileSync(
+          `./logs/results/failed-${Date.now()}.json`,
+          JSON.stringify(failedTests)
+        );
+      } catch (e) {
+        console.log("Error saving the failed tests file: ", e);
+      }
+    }
+  }
+
   async function uploadFilesToS3() {
     const logsFolder =
       reporterOptions.executeFrom === "lambda"
@@ -459,6 +473,7 @@ const install = (on, options) => {
 
   on("after:run", async () => {
     try {
+      createFailedTestsFile();
       await uploadFilesToS3();
     } catch (err) {
       console.log("Error uploading files to s3", err.message);
@@ -488,7 +503,7 @@ const install = (on, options) => {
         fse.writeFileSync(filePath, JSON.stringify(resultFile));
       }
     } catch (err) {
-      console.log("Error saving cypress durartion", err.message);
+      console.log("Error saving cypress duration", err.message);
     }
     counter++;
   });
