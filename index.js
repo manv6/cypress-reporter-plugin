@@ -47,7 +47,7 @@ const install = (on, options) => {
       return;
     }
 
-    log(`[otf-reporter] ${msg}`);
+    log(`[testerloop-reporter] ${msg}`);
   }
 
   function isChrome(browser) {
@@ -138,7 +138,7 @@ const install = (on, options) => {
       const jsonString = JSON.stringify(testsMap);
       let x = counter;
       // Write the JSON to a file
-      const testsMapPath = `./logs/results/`;
+      const testsMapPath = `./logs/${reporterOptions.runId}/results/`;
       const fileName = `testsMap${x}.json`;
       fse.outputFileSync(`${testsMapPath}/${fileName}`, jsonString);
       return null;
@@ -148,7 +148,7 @@ const install = (on, options) => {
       const jsonString = JSON.stringify(messageLog);
 
       // Write the JSON to a file
-      const consoleLogsPath = `./logs/${path}/console`;
+      const consoleLogsPath = `./logs/${reporterOptions.runId}/${path}/console`;
       const fileName = "console-logs.txt";
       fse.outputFileSync(`${consoleLogsPath}/${fileName}`, jsonString);
       return null;
@@ -161,7 +161,7 @@ const install = (on, options) => {
       const jsonString = JSON.stringify(har);
 
       // Write the JSON to a file
-      const harPath = `./logs/${path}/har`;
+      const harPath = `./logs/${reporterOptions.runId}/${path}/har`;
       const fileName = "network-events.har";
 
       fse.outputFileSync(`${harPath}/${fileName}`, jsonString);
@@ -321,7 +321,7 @@ const install = (on, options) => {
     },
     save: (obj) => {
       try {
-        fse.outputFileSync(`./logs/test.txt`, obj);
+        fse.outputFileSync(`./logs/${reporterOptions.runId}/test.txt`, obj);
       } catch (err) {
         console.log(`Error saving output file '${obj.fileName}'`, err.message);
       }
@@ -333,7 +333,10 @@ const install = (on, options) => {
       const blob = JSON.stringify(obj.contents);
 
       try {
-        fse.outputFileSync(`./logs/${obj.fileName}`, blob);
+        fse.outputFileSync(
+          `./logs/${reporterOptions.runId}/${obj.fileName}`,
+          blob
+        );
       } catch (err) {
         console.log(`Error saving output file '${obj.fileName}'`, err.message);
       }
@@ -344,7 +347,10 @@ const install = (on, options) => {
       const blob = JSON.stringify(obj.contents);
 
       try {
-        fse.outputFileSync(`./logs/${obj.folderName}/${obj.fileName}`, blob);
+        fse.outputFileSync(
+          `./logs/${reporterOptions.runId}/${obj.folderName}/${obj.fileName}`,
+          blob
+        );
       } catch (err) {
         console.log(`Error saving output file '${obj.fileName}'`, err.message);
       }
@@ -384,7 +390,7 @@ const install = (on, options) => {
       return null;
     },
     saveScreenshots: (path) => {
-      const screenshotsPath = `./logs/${path}/screenshots`;
+      const screenshotsPath = `./logs/${reporterOptions.runId}/${path}/screenshots`;
 
       for (const image of images) {
         fse.outputFileSync(
@@ -399,14 +405,14 @@ const install = (on, options) => {
       // cypress screenshot is always 800 * 600 whatever is the viewport
       const cropConfig = { width: 820, height: 630, top: 0, left: 450 };
 
-      const dir = `./logs/${path}/screenshots/`;
+      const dir = `./logs/${reporterOptions.runId}/${path}/screenshots/`;
       if (fs.existsSync(dir)) {
         const files = fs.readdirSync(dir);
         if (files.length > 0) {
           files.forEach((file) => {
             PNGCrop.crop(
-              `./logs/${path}/screenshots/` + file,
-              `./logs/${path}/screenshots/` + file,
+              `./logs/${reporterOptions.runId}/${path}/screenshots/` + file,
+              `./logs/${reporterOptions.runId}/${path}/screenshots/` + file,
               cropConfig,
               function (err) {
                 if (err) throw new Error("Failed to crop screenshots");
@@ -428,7 +434,7 @@ const install = (on, options) => {
     if (failedTests.length > 0) {
       try {
         fse.outputFileSync(
-          `./logs/results/failed-${Date.now()}.json`,
+          `./logs/${reporterOptions.runId}/results/failed-${Date.now()}.json`,
           JSON.stringify(failedTests)
         );
       } catch (e) {
@@ -440,8 +446,8 @@ const install = (on, options) => {
   async function uploadFilesToS3() {
     const logsFolder =
       reporterOptions.executeFrom === "lambda"
-        ? `/tmp/cypress/logs/`
-        : `./logs`;
+        ? `/tmp/cypress/logs/${reporterOptions.runId}/`
+        : `./logs/${reporterOptions.runId}/`;
     const videosFolder =
       reporterOptions.executeFrom === "lambda"
         ? `/tmp/cypress/cypress/videos/`
@@ -485,7 +491,10 @@ const install = (on, options) => {
 
     try {
       const testMap = JSON.parse(
-        fse.readFileSync(`./logs/results/testsMap${x}.json`, "utf8")
+        fse.readFileSync(
+          `./logs/${reporterOptions.runId}/results/testsMap${x}.json`,
+          "utf8"
+        )
       );
 
       for (const { testSequence, requestId } of testMap) {
@@ -499,7 +508,7 @@ const install = (on, options) => {
             status: "failed",
           });
         }
-        const filePath = `./logs/${requestId}/cypress/results.json`;
+        const filePath = `./logs/${reporterOptions.runId}/${requestId}/cypress/results.json`;
         fse.writeFileSync(filePath, JSON.stringify(resultFile));
       }
     } catch (err) {

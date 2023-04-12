@@ -1,6 +1,6 @@
 {
   "name": "cypress-tests-testerloop",
-  "version": "1.0.14",
+  "version": "1.0.20",
   "description": "Cypress Tests for Testerloop",
   "main": "index.js",
   "scripts": {
