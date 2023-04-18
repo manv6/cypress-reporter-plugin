@@ -3,6 +3,11 @@
   "version": "1.0.21",
   "description": "",
   "main": "index.js",
+  "files": [
+    "**/*",
+    "!node_modules",
+    "!cypress"
+  ],
   "scripts": {
     "test": "test"
   },
