@@ -4,7 +4,7 @@
 
 let reporterOptions = {
   runId: process.env.RUN_ID || "set_the_env_variable",
-  requestId: process.env.REQUEST_ID,
+  tlTestId: process.env.REQUEST_ID,
   s3BucketName: "",
   executeFrom: "local",
   customResultsPath: "",
@@ -129,9 +129,9 @@ const install = (on, options) => {
   }
 
   on("task", {
-    generateRequestId: () => {
-      if (reporterOptions.requestId !== undefined) {
-        return reporterOptions.requestId;
+    generateTlTestId: () => {
+      if (reporterOptions.tlTestId !== undefined) {
+        return reporterOptions.tlTestId;
       } else return v4();
     },
     async writeTestsMapToFile(testsMap) {
@@ -443,6 +443,26 @@ const install = (on, options) => {
     }
   }
 
+  function createAndPutCompleteFile() {
+    const s3Client = new S3Client({ region: process.env.REGION });
+    // testsMap.forEach((test) => {
+    //   console.log("---> Creating complete file for each testerloop id");
+    //   const params = {
+    //     Bucket: bucket,
+    //     Key: `s3://${reporterOptions.s3BucketName}/${reporterOptions.customResultsPath}${reporterOptions.runId}/${test.tlTestId}/results/file.complete`,
+    //     Body: "Completed",
+    //   };
+
+    //   s3Client.putObject(params, function (err, data) {
+    //     if (err) {
+    //       console.log(err, err.stack);
+    //     } else {
+    //       console.log("File created successfully.");
+    //     }
+    //   });
+    // });
+  }
+
   async function uploadFilesToS3() {
     const logsFolder =
       reporterOptions.executeFrom === "lambda"
@@ -481,6 +501,7 @@ const install = (on, options) => {
     try {
       createFailedTestsFile();
       await uploadFilesToS3();
+      await createAndPutCompleteFile();
     } catch (err) {
       console.log("Error uploading files to s3", err.message);
     }
@@ -497,18 +518,18 @@ const install = (on, options) => {
         )
       );
 
-      for (const { testSequence, requestId } of testMap) {
+      for (const { testSequence, tlTestId } of testMap) {
         const test = results.tests[testSequence - 1];
-        const runs = [{ tests: [test], testId: requestId }];
+        const runs = [{ tests: [test], testId: tlTestId }];
         const resultFile = { runs };
         if (test.state === "failed") {
           failedTests.push({
-            testId: requestId,
+            testId: tlTestId,
             title: test.title.slice(-1)[0],
             status: "failed",
           });
         }
-        const filePath = `./logs/${reporterOptions.runId}/${requestId}/cypress/results.json`;
+        const filePath = `./logs/${reporterOptions.runId}/${tlTestId}/cypress/results.json`;
         fse.writeFileSync(filePath, JSON.stringify(resultFile));
       }
     } catch (err) {

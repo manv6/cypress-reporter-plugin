@@ -23,11 +23,11 @@ beforeEach(() => {
   resetData();
   cy.task("clearReporterData");
   cy.task("startScreenshots");
-  cy.task("generateRequestId").then((id) => {
-    requestId = id;
+  cy.task("generateTlTestId").then((id) => {
+    tlTestId = id;
     testsCount++;
     testsMap.push({
-      requestId: requestId,
+      tlTestId: tlTestId,
       testSequence: testsCount,
       spec: { file: Cypress.spec, test: Cypress.currentTest },
     });
@@ -60,7 +60,7 @@ let snapshotMetaDataArray = [];
 let testsMap = [];
 let snapshotID = 0;
 let subjectObj = {};
-let requestId;
+let tlTestId;
 let testsCount = 0;
 
 function resetData() {
@@ -170,17 +170,17 @@ afterEach(() => {
   cy.task("saveCypressOutput", {
     contents: cypressCommands,
     fileName: "cypress/out.json",
-    folderName: requestId,
+    folderName: tlTestId,
   });
   cy.task("saveCypressOutput", {
     contents: snapshotMetaDataArray,
     fileName: "snapshots/snapshot-metadata.json",
-    folderName: requestId,
+    folderName: tlTestId,
   });
-  cy.task("saveScreenshots", requestId);
-  cy.task("writeConsoleLogsToFile", requestId);
-  cy.task("writeHarToFile", requestId);
-  cy.task("cropScreenshots", requestId);
+  cy.task("saveScreenshots", tlTestId);
+  cy.task("writeConsoleLogsToFile", tlTestId);
+  cy.task("writeHarToFile", tlTestId);
+  cy.task("cropScreenshots", tlTestId);
 });
 
 after(() => {
