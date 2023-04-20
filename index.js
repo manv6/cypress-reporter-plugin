@@ -25,6 +25,8 @@ const install = (on, options) => {
   const S3SyncClient = require("s3-sync-client");
   const { v4 } = require("uuid");
 
+  const s3Client = new S3Client({ region: process.env.REGION });
+
   let portForCDP;
   let cdp;
   let eventFilter;
@@ -446,7 +448,6 @@ const install = (on, options) => {
   }
 
   async function createAndPutCompleteFile() {
-    const s3Client = new S3Client({ region: process.env.REGION });
     for (const test of testMap) {
       // Set the bucket name and file key
       const bucketName = `${reporterOptions.s3BucketName}`;
@@ -492,7 +493,6 @@ const install = (on, options) => {
       );
 
       async function sendFilesToS3(localPath, s3Path) {
-        const s3Client = new S3Client({ region: process.env.REGION });
         const { sync } = new S3SyncClient({ client: s3Client });
         try {
           console.log(`Begin syncing local files from ${localPath}`);
