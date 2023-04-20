@@ -21,7 +21,7 @@ const install = (on, options) => {
   const { harFromMessages } = require("chrome-har");
   const connect = require("chrome-remote-interface");
   const PNGCrop = require("png-crop");
-  const { S3Client } = require("@aws-sdk/client-s3");
+  const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
   const S3SyncClient = require("s3-sync-client");
   const { v4 } = require("uuid");
 
@@ -36,6 +36,7 @@ const install = (on, options) => {
   let counter = Math.floor(Math.random() * 1000000 + 1);
   let stopScreenshots = false;
   let startScreenshots = false;
+  let testMap = [];
 
   function log(msg) {
     console.log(msg);
@@ -141,6 +142,7 @@ const install = (on, options) => {
       const testsMapPath = `./logs/${reporterOptions.runId}/results/`;
       const fileName = `testsMap${x}.json`;
       fse.outputFileSync(`${testsMapPath}/${fileName}`, jsonString);
+      testMap = testsMap;
       return null;
     },
 
@@ -443,24 +445,30 @@ const install = (on, options) => {
     }
   }
 
-  function createAndPutCompleteFile() {
+  async function createAndPutCompleteFile() {
     const s3Client = new S3Client({ region: process.env.REGION });
-    // testsMap.forEach((test) => {
-    //   console.log("---> Creating complete file for each testerloop id");
-    //   const params = {
-    //     Bucket: bucket,
-    //     Key: `s3://${reporterOptions.s3BucketName}/${reporterOptions.customResultsPath}${reporterOptions.runId}/${test.tlTestId}/results/file.complete`,
-    //     Body: "Completed",
-    //   };
+    for (const test of testMap) {
+      // Set the bucket name and file key
+      const bucketName = `${reporterOptions.s3BucketName}`;
+      const fileKey = `${reporterOptions.customResultsPath}${reporterOptions.runId}/${test.tlTestId}/test.complete`;
+      await createEmptyFile(bucketName, fileKey);
+    }
 
-    //   s3Client.putObject(params, function (err, data) {
-    //     if (err) {
-    //       console.log(err, err.stack);
-    //     } else {
-    //       console.log("File created successfully.");
-    //     }
-    //   });
-    // });
+    async function createEmptyFile(bucketName, fileKey) {
+      const putObjectCommand = new PutObjectCommand({
+        Bucket: bucketName,
+        Key: fileKey,
+        Body: "",
+      });
+
+      try {
+        console.log("Creating file for " + fileKey);
+        const response = await s3Client.send(putObjectCommand);
+        console.log("File created successfully for " + fileKey);
+      } catch (err) {
+        console.log("Error creating file: " + fileKey, err);
+      }
+    }
   }
 
   async function uploadFilesToS3() {
