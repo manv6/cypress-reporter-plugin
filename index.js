@@ -4,7 +4,7 @@
 
 let reporterOptions = {
   runId: process.env.RUN_ID || "set_the_env_variable",
-  requestId: process.env.REQUEST_ID,
+  tlTestId: process.env.REQUEST_ID,
   s3BucketName: "",
   executeFrom: "local",
   customResultsPath: "",
@@ -21,9 +21,11 @@ const install = (on, options) => {
   const { harFromMessages } = require("chrome-har");
   const connect = require("chrome-remote-interface");
   const PNGCrop = require("png-crop");
-  const { S3Client } = require("@aws-sdk/client-s3");
+  const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
   const S3SyncClient = require("s3-sync-client");
   const { v4 } = require("uuid");
+
+  const s3Client = new S3Client({ region: process.env.REGION });
 
   let portForCDP;
   let cdp;
@@ -36,6 +38,7 @@ const install = (on, options) => {
   let counter = Math.floor(Math.random() * 1000000 + 1);
   let stopScreenshots = false;
   let startScreenshots = false;
+  let testMap = [];
 
   function log(msg) {
     console.log(msg);
@@ -129,9 +132,9 @@ const install = (on, options) => {
   }
 
   on("task", {
-    generateRequestId: () => {
-      if (reporterOptions.requestId !== undefined) {
-        return reporterOptions.requestId;
+    generateTlTestId: () => {
+      if (reporterOptions.tlTestId !== undefined) {
+        return reporterOptions.tlTestId;
       } else return v4();
     },
     async writeTestsMapToFile(testsMap) {
@@ -141,6 +144,7 @@ const install = (on, options) => {
       const testsMapPath = `./logs/${reporterOptions.runId}/results/`;
       const fileName = `testsMap${x}.json`;
       fse.outputFileSync(`${testsMapPath}/${fileName}`, jsonString);
+      testMap = testsMap;
       return null;
     },
 
@@ -443,6 +447,31 @@ const install = (on, options) => {
     }
   }
 
+  async function createAndPutCompleteFile() {
+    for (const test of testMap) {
+      // Set the bucket name and file key
+      const bucketName = `${reporterOptions.s3BucketName}`;
+      const fileKey = `${reporterOptions.customResultsPath}${reporterOptions.runId}/${test.tlTestId}/test.complete`;
+      await createEmptyFile(bucketName, fileKey);
+    }
+
+    async function createEmptyFile(bucketName, fileKey) {
+      const putObjectCommand = new PutObjectCommand({
+        Bucket: bucketName,
+        Key: fileKey,
+        Body: "",
+      });
+
+      try {
+        console.log("Creating file for " + fileKey);
+        const response = await s3Client.send(putObjectCommand);
+        console.log("File created successfully for " + fileKey);
+      } catch (err) {
+        console.log("Error creating file: " + fileKey, err);
+      }
+    }
+  }
+
   async function uploadFilesToS3() {
     const logsFolder =
       reporterOptions.executeFrom === "lambda"
@@ -464,7 +493,6 @@ const install = (on, options) => {
       );
 
       async function sendFilesToS3(localPath, s3Path) {
-        const s3Client = new S3Client({ region: process.env.REGION });
         const { sync } = new S3SyncClient({ client: s3Client });
         try {
           console.log(`Begin syncing local files from ${localPath}`);
@@ -481,6 +509,7 @@ const install = (on, options) => {
     try {
       createFailedTestsFile();
       await uploadFilesToS3();
+      await createAndPutCompleteFile();
     } catch (err) {
       console.log("Error uploading files to s3", err.message);
     }
@@ -497,18 +526,18 @@ const install = (on, options) => {
         )
       );
 
-      for (const { testSequence, requestId } of testMap) {
+      for (const { testSequence, tlTestId } of testMap) {
         const test = results.tests[testSequence - 1];
-        const runs = [{ tests: [test], testId: requestId }];
+        const runs = [{ tests: [test], testId: tlTestId }];
         const resultFile = { runs };
         if (test.state === "failed") {
           failedTests.push({
-            testId: requestId,
+            testId: tlTestId,
             title: test.title.slice(-1)[0],
             status: "failed",
           });
         }
-        const filePath = `./logs/${reporterOptions.runId}/${requestId}/cypress/results.json`;
+        const filePath = `./logs/${reporterOptions.runId}/${tlTestId}/cypress/results.json`;
         fse.writeFileSync(filePath, JSON.stringify(resultFile));
       }
     } catch (err) {
