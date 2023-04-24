@@ -1,0 +1,31 @@
+{
+  "reporterBaseUrl": "https://otf.overloop.io",
+  "reporter": {
+    "uploadFilesToS3": true,
+    "s3BucketName": "otf-lambda-results",
+    "customPath": "steve123"
+  },
+  "lambda": {
+    "lambdaArn": "arn:aws:lambda:eu-west-3:168763042228:function:cypress-lambda",
+    "timeOutInSecs": 120
+  },
+  "ecs": {
+    "taskDefinition": "testerloop:5",
+    "containerName": "ecs-cypress-testerloop",
+    "clusterARN": "cypress-ecs-cluster",
+    "uploadToS3RoleArn": "arn:aws:iam::168763042228:role/AmazonEC2UploadToS3Role",
+    "subnets": [
+      "subnet-05e1acf35a641b6db",
+      "subnet-03cf7f29d0d0d0759",
+      "subnet-078965950ddc422dd",
+      "subnet-05a80e10c6492139a"
+    ],
+    "securityGroups": [
+      "sg-0df337b69696c60a4"
+    ]
+  },
+  "envVariables": [
+    "JOB_ID_STEVE",
+    "REQUEST_ID"
+  ]
+}

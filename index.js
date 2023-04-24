@@ -3,17 +3,15 @@
 // Holds the logic for the cdp connection
 
 let reporterOptions = {
-  runId: process.env.RUN_ID || "set_the_env_variable",
-  tlTestId: process.env.REQUEST_ID,
+  runId: "",
+  tlTestId: "",
   s3BucketName: "",
-  executeFrom: "local",
+  executeFrom: "",
   customResultsPath: "",
   uploadResultsToS3: false,
 };
 
 const install = (on, options) => {
-  reporterOptions = { ...reporterOptions, ...options };
-  console.log("Testerloop reporter options: ", reporterOptions);
   const fs = require("fs");
   const fse = require("fs-extra");
   const { promisify } = require("util");
@@ -24,6 +22,8 @@ const install = (on, options) => {
   const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
   const S3SyncClient = require("s3-sync-client");
   const { v4 } = require("uuid");
+  const colors = require("colors");
+  colors.enable();
 
   const s3Client = new S3Client({ region: process.env.REGION });
 
@@ -39,9 +39,29 @@ const install = (on, options) => {
   let stopScreenshots = false;
   let startScreenshots = false;
   let testMap = [];
-
+  const reporterLog = colors.yellow("[testerloop-reporter]");
+  let s3RunPath;
   function log(msg) {
     console.log(msg);
+  }
+
+  function setRunPath() {
+    s3RunPath = (
+      reporterOptions.s3BucketName +
+      "/" +
+      reporterOptions.customResultsPath +
+      "/" +
+      reporterOptions.runId
+    )
+      .replaceAll("//", "/")
+      .replaceAll("//", "/");
+  }
+
+  function errorWritingFileLog(obj) {
+    console.log(
+      `${reporterLog} Error saving output file '${obj.fileName}'`,
+      err.message
+    );
   }
 
   function debugLog(msg) {
@@ -50,7 +70,7 @@ const install = (on, options) => {
       return;
     }
 
-    log(`[testerloop-reporter] ${msg}`);
+    log(`${reporterLog} ${msg}`);
   }
 
   function isChrome(browser) {
@@ -74,8 +94,6 @@ const install = (on, options) => {
   }
 
   async function browserLaunchHandler(browser = {}, launchOptions) {
-    console.log("----------> BEFORE Browser START");
-
     if (!isChrome(browser)) {
       return debugLog(
         `Warning: An unsupported browser family was used, output will not be logged to console: ${browser.family}`
@@ -99,8 +117,6 @@ const install = (on, options) => {
 
     // We store the port for further use in the connect function later
     portForCDP = parseInt(existingDebuggingPort.split("=")[1]);
-    console.log("Debug Port to connect is: ", portForCDP);
-    console.log("----------> BEFORE Browser END");
     // We return the launch argument options so that
     // the browser can successfully initialize once the event has finished
     return launchOptions;
@@ -132,6 +148,25 @@ const install = (on, options) => {
   }
 
   on("task", {
+    getReporterOptions: async (envVars) => {
+      reporterOptions.runId = envVars[0] || process.env.TL_RUN_ID;
+      reporterOptions.tlTestId = envVars[1] || process.env.TL_TEST_ID;
+      reporterOptions.executeFrom = envVars[2];
+      reporterOptions.s3BucketName = envVars[3];
+      reporterOptions.customResultsPath = envVars[4];
+      reporterOptions.uploadResultsToS3 = envVars[5];
+
+      console.log(`${reporterLog} Reporter configuration:`);
+      for (let key in reporterOptions) {
+        if (key !== "tlTestId") {
+          console.log(
+            `   ${colors.cyan(key)}: ${colors.white(reporterOptions[key])}`
+          );
+        }
+      }
+      setRunPath();
+      return reporterOptions;
+    },
     generateTlTestId: () => {
       if (reporterOptions.tlTestId !== undefined) {
         return reporterOptions.tlTestId;
@@ -178,7 +213,6 @@ const install = (on, options) => {
       srcAttribute,
       saveOptions,
     }) => {
-      console.log('saving "%s" -> "%s"', fullUrl, srcAttribute);
       if (!fullUrl) {
         throw new Error("Missing fullUrl");
       }
@@ -252,7 +286,7 @@ const install = (on, options) => {
           cdp.Network.responseReceived(async (params) => {
             writeHarLogs(params, "Network.responseReceived");
             const response = params.response;
-            const requestId = params.requestId;
+            const tlTestId = params.tlTestId;
             if (
               response.status !== 204 &&
               response.headers.location == null &&
@@ -261,12 +295,12 @@ const install = (on, options) => {
               !response.mimeType.includes("video")
             ) {
               cdp.Network.loadingFinished(async (loadingFinishedParams) => {
-                if (loadingFinishedParams.requestId === requestId) {
+                if (loadingFinishedParams.tlTestId === tlTestId) {
                   try {
                     const responseBody = await cdp.send(
                       "Network.getResponseBody",
                       {
-                        requestId,
+                        tlTestId,
                       }
                     );
                     params.response = {
@@ -327,7 +361,7 @@ const install = (on, options) => {
       try {
         fse.outputFileSync(`./logs/${reporterOptions.runId}/test.txt`, obj);
       } catch (err) {
-        console.log(`Error saving output file '${obj.fileName}'`, err.message);
+        errorWritingFileLog(obj);
       }
 
       return null;
@@ -342,7 +376,7 @@ const install = (on, options) => {
           blob
         );
       } catch (err) {
-        console.log(`Error saving output file '${obj.fileName}'`, err.message);
+        errorWritingFileLog(obj);
       }
 
       return null;
@@ -356,7 +390,7 @@ const install = (on, options) => {
           blob
         );
       } catch (err) {
-        console.log(`Error saving output file '${obj.fileName}'`, err.message);
+        errorWritingFileLog(obj);
       }
 
       return null;
@@ -434,7 +468,6 @@ const install = (on, options) => {
   on("before:browser:launch", browserLaunchHandler);
 
   function createFailedTestsFile() {
-    console.log("---> Creating failed results test file");
     if (failedTests.length > 0) {
       try {
         fse.outputFileSync(
@@ -442,7 +475,7 @@ const install = (on, options) => {
           JSON.stringify(failedTests)
         );
       } catch (e) {
-        console.log("Error saving the failed tests file: ", e);
+        console.log(`${reporterLog} Error saving the failed tests file: `, e);
       }
     }
   }
@@ -451,7 +484,9 @@ const install = (on, options) => {
     for (const test of testMap) {
       // Set the bucket name and file key
       const bucketName = `${reporterOptions.s3BucketName}`;
-      const fileKey = `${reporterOptions.customResultsPath}${reporterOptions.runId}/${test.tlTestId}/test.complete`;
+      const fileKey = `${s3RunPath.replace(bucketName + "/", "")}/${
+        test.tlTestId
+      }/test.complete`;
       await createEmptyFile(bucketName, fileKey);
     }
 
@@ -463,16 +498,15 @@ const install = (on, options) => {
       });
 
       try {
-        console.log("Creating file for " + fileKey);
-        const response = await s3Client.send(putObjectCommand);
-        console.log("File created successfully for " + fileKey);
+        await s3Client.send(putObjectCommand);
       } catch (err) {
-        console.log("Error creating file: " + fileKey, err);
+        console.log(`${reporterLog} Error creating file: ` + fileKey, err);
       }
     }
   }
 
   async function uploadFilesToS3() {
+    // Determine the folder path depending on the execution type environment (lambda | local | ecs)
     const logsFolder =
       reporterOptions.executeFrom === "lambda"
         ? `/tmp/cypress/logs/${reporterOptions.runId}/`
@@ -483,23 +517,20 @@ const install = (on, options) => {
         : `./cypress/videos/`;
 
     if (reporterOptions.uploadResultsToS3 === true) {
-      await sendFilesToS3(
-        videosFolder,
-        `s3://${reporterOptions.s3BucketName}/${reporterOptions.customResultsPath}${reporterOptions.runId}/video`
-      );
-      await sendFilesToS3(
-        logsFolder,
-        `s3://${reporterOptions.s3BucketName}/${reporterOptions.customResultsPath}${reporterOptions.runId}`
-      );
+      await sendFilesToS3(videosFolder, `s3://${s3RunPath}/video`);
+      await sendFilesToS3(logsFolder, `s3://${s3RunPath}`);
 
       async function sendFilesToS3(localPath, s3Path) {
+        const s3Client = new S3Client({ region: process.env.REGION });
         const { sync } = new S3SyncClient({ client: s3Client });
         try {
-          console.log(`Begin syncing local files from ${localPath}`);
+          console.log(
+            `${reporterLog} Begin syncing local files from path ${localPath} to s3`
+          );
           await sync(localPath, s3Path);
-          console.log(`Finish syncing ${localPath} folder`);
+          console.log(`${reporterLog} Finish syncing local folder`);
         } catch (error) {
-          console.log("Failed to sync files", error);
+          console.log(`${reporterLog} Failed to sync files`, error);
         }
       }
     }
@@ -511,7 +542,7 @@ const install = (on, options) => {
       await uploadFilesToS3();
       await createAndPutCompleteFile();
     } catch (err) {
-      console.log("Error uploading files to s3", err.message);
+      console.log(`${reporterLog} Error uploading files to s3`, err.message);
     }
   });
 
@@ -541,7 +572,7 @@ const install = (on, options) => {
         fse.writeFileSync(filePath, JSON.stringify(resultFile));
       }
     } catch (err) {
-      console.log("Error saving cypress duration", err.message);
+      console.log(`${reporterLog} Error saving cypress duration`, err.message);
     }
     counter++;
   });
