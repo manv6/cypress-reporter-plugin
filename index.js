@@ -39,6 +39,9 @@ const install = (on, options) => {
   let stopScreenshots = false;
   let startScreenshots = false;
   let testMap = [];
+  let addedResults = {};
+  let testTlIds = [];
+
   const reporterLog = colors.yellow("[testerloop-reporter]");
   let s3RunPath;
   function log(msg) {
@@ -480,6 +483,19 @@ const install = (on, options) => {
     }
   }
 
+  function updateResultsFiles() {
+    try {
+      for (const id of testTlIds) {
+        const filePath = `./logs/${reporterOptions.runId}/${id}/cypress/results.json`;
+        let results = JSON.parse(fse.readFileSync(filePath, "utf8"));
+        results = { ...results, ...addedResults };
+        fse.writeFileSync(filePath, JSON.stringify(results));
+      }
+    } catch (err) {
+      console.log("Error updating results file", err.message);
+    }
+  }
+
   async function createAndPutCompleteFile() {
     for (const test of testMap) {
       // Set the bucket name and file key
@@ -536,9 +552,16 @@ const install = (on, options) => {
     }
   }
 
-  on("after:run", async () => {
+  on("after:run", async (results) => {
     try {
+      addedResults = {
+        status: results.status,
+        startedTestsAt: results.startedTestsAt,
+        endedTestsAt: results.endedTestsAt,
+        browserVersion: results.browserVersion,
+      };
       createFailedTestsFile();
+      updateResultsFiles();
       await uploadFilesToS3();
       await createAndPutCompleteFile();
     } catch (err) {
@@ -559,6 +582,7 @@ const install = (on, options) => {
 
       for (const { testSequence, tlTestId } of testMap) {
         const test = results.tests[testSequence - 1];
+        testTlIds.push(tlTestId);
         const runs = [{ tests: [test], testId: tlTestId }];
         const resultFile = { runs };
         if (test.state === "failed") {
