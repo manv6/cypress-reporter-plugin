@@ -298,11 +298,6 @@ const install = (on, options) => {
               !response.mimeType.includes("video")
             ) {
               cdp.Network.loadingFinished(async (loadingFinishedParams) => {
-                console.log(
-                  "loadingFinishedParams.requestId",
-                  loadingFinishedParams.requestId
-                );
-                console.log("requestId", requestId);
                 if (loadingFinishedParams.requestId === requestId) {
                   try {
                     const responseBody = await cdp.send(
@@ -311,7 +306,6 @@ const install = (on, options) => {
                         requestId,
                       }
                     );
-                    console.log("response", response.Body);
                     params.response = {
                       ...params.response,
                       body: Buffer.from(
