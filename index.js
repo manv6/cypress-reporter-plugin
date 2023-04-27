@@ -289,7 +289,7 @@ const install = (on, options) => {
           cdp.Network.responseReceived(async (params) => {
             writeHarLogs(params, "Network.responseReceived");
             const response = params.response;
-            const tlTestId = params.tlTestId;
+            const requestId = params.requestId;
             if (
               response.status !== 204 &&
               response.headers.location == null &&
@@ -298,12 +298,12 @@ const install = (on, options) => {
               !response.mimeType.includes("video")
             ) {
               cdp.Network.loadingFinished(async (loadingFinishedParams) => {
-                if (loadingFinishedParams.tlTestId === tlTestId) {
+                if (loadingFinishedParams.requestId === requestId) {
                   try {
                     const responseBody = await cdp.send(
                       "Network.getResponseBody",
                       {
-                        tlTestId,
+                        requestId,
                       }
                     );
                     params.response = {
