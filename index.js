@@ -31,6 +31,7 @@ const install = (on, options) => {
   let cdp;
   let eventFilter;
   let messageLog = [];
+  let newMessageLog = [];
   let harLogs = [];
   let images = [];
   let failedTests = [];
@@ -82,6 +83,10 @@ const install = (on, options) => {
       ["chrome", "chromium", "canary"].includes(browser.name) ||
       (browser.family === "chromium" && browser.name !== "electron")
     );
+  }
+
+  function recordNewLogMessage(logMessage) {
+    newMessageLog.push(logMessage);
   }
 
   function recordLogMessage(logMessage) {
@@ -148,6 +153,14 @@ const install = (on, options) => {
     if (stackTrace.callFrames.length > 0) {
       logAdditional(`Stacktrace: ${JSON.stringify(stackTrace.callFrames)}`);
     }
+
+    const consoleLogEvent = {
+      type,
+      args,
+      timestamp: new Date(timestamp).getTime(),
+      stackTrace,
+    };
+    recordNewLogMessage(consoleLogEvent);
   }
 
   on("task", {
@@ -188,11 +201,15 @@ const install = (on, options) => {
 
     async writeConsoleLogsToFile(path) {
       const jsonString = JSON.stringify(messageLog);
-
-      // Write the JSON to a file
+      // Write the txt console logs
       const consoleLogsPath = `./logs/${reporterOptions.runId}/${path}/console`;
       const fileName = "console-logs.txt";
       fse.outputFileSync(`${consoleLogsPath}/${fileName}`, jsonString);
+
+      const newJsonString = JSON.stringify(newMessageLog);
+      // Write the new JSON format to file
+      const newFileName = "console-logs.json";
+      fse.outputFileSync(`${consoleLogsPath}/${newFileName}`, newJsonString);
       return null;
     },
 
@@ -250,10 +267,11 @@ const install = (on, options) => {
           debugLog(
             `Attempting to connect to Chrome Debugging Protocol on port ${portForCDP}`
           );
+          const HOST = "127.0.0.1";
 
           cdp = await connect({
             port: portForCDP,
-            host: "127.0.0.1",
+            host: HOST,
           });
 
           debugLog("Connected to Chrome Debugging Protocol");

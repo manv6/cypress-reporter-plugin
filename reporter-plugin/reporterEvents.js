@@ -119,9 +119,11 @@ Cypress.on("command:start", ({ attributes }) => {
 });
 
 Cypress.on("command:end", ({ attributes }) => {
-  subjectObj = grabInteractedElements(attributes, commandsForSnapshots) || {};
-  if (commandsForSnapshots.includes(attributes.name)) {
-    updateSnapshotState();
+  if (!firstVisit) {
+    subjectObj = grabInteractedElements(attributes, commandsForSnapshots) || {};
+    if (commandsForSnapshots.includes(attributes.name)) {
+      updateSnapshotState();
+    }
   }
 });
 
