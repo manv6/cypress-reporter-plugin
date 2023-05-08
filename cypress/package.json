@@ -32,6 +32,7 @@
   "dependencies": {
     "@badeball/cypress-cucumber-preprocessor": "15.0.0",
     "@cypress/browserify-preprocessor": "3.0.2",
+    "@testerloop/testerloop-cli": "^1.0.42",
     "cypress": "12.8.1"
   }
 }

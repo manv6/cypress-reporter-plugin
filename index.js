@@ -155,6 +155,7 @@ const install = (on, options) => {
     }
 
     const consoleLogEvent = {
+      id: v4(),
       type,
       args,
       timestamp: new Date(timestamp).getTime(),
