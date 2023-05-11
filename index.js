@@ -551,7 +551,10 @@ const install = (on, options) => {
         ? `/tmp/cypress/cypress/videos/`
         : `./cypress/videos/`;
 
-    if (reporterOptions.uploadResultsToS3 === true) {
+    if (
+      reporterOptions.uploadResultsToS3 === true ||
+      reporterOptions.uploadResultsToS3 === "true"
+    ) {
       await sendFilesToS3(videosFolder, `s3://${s3RunPath}/video`);
       await sendFilesToS3(logsFolder, `s3://${s3RunPath}`);
 
