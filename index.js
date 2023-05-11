@@ -173,6 +173,20 @@ const install = (on, options) => {
       reporterOptions.customResultsPath = envVars[4];
       reporterOptions.uploadResultsToS3 = envVars[5];
 
+      // Handle special cases for reporter options
+      const valuesToIgnoreForResultsPath = [
+        "null",
+        null,
+        "undefined",
+        undefined,
+      ];
+      if (valuesToIgnoreForResultsPath.includes(envVars[4])) {
+        reporterOptions.customResultsPath = "";
+      }
+      if (valuesToIgnoreForResultsPath.includes(envVars[2])) {
+        reporterOptions.executeFrom = "local";
+      }
+
       console.log(`${reporterLog} Reporter configuration:`);
       for (let key in reporterOptions) {
         if (key !== "tlTestId") {
@@ -553,10 +567,10 @@ const install = (on, options) => {
 
     if (
       reporterOptions.uploadResultsToS3 === true ||
-      reporterOptions.uploadResultsToS3 === "true"
+      reporterOptions.uploadResultsToS3 == "true"
     ) {
-      await sendFilesToS3(videosFolder, `s3://${s3RunPath}/video`);
       await sendFilesToS3(logsFolder, `s3://${s3RunPath}`);
+      await sendFilesToS3(videosFolder, `s3://${s3RunPath}/video`);
 
       async function sendFilesToS3(localPath, s3Path) {
         const s3Client = new S3Client({ region: process.env.REGION });
