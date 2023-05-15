@@ -386,8 +386,9 @@ const install = (on, options) => {
           }
           return cdp;
         }
-        tryConnect();
       }
+      tryConnect();
+
       return null;
     },
 
@@ -435,7 +436,7 @@ const install = (on, options) => {
     },
     //TODO add width,height and interval to be parameterized
     screenshot: async () => {
-      if (cdp) {
+      if (cdp !== (undefined || null)) {
         takeScreenshots = setInterval(async () => {
           if (!stopScreenshots && startScreenshots) {
             let capturedImage = await cdp.Page.captureScreenshot();
@@ -532,7 +533,6 @@ const install = (on, options) => {
       console.log("Error updating results file", err.message);
     }
   }
-
 
   async function createAndPutCompleteFile() {
     for (const test of testMap) {
