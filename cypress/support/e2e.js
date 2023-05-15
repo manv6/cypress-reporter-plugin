@@ -14,8 +14,7 @@
 // ***********************************************************
 // Import commands.js using ES2015 syntax:
 import "./commands";
-import "../../reporter-plugin/reporterEvents"
-import "../../reporter-plugin/reporterCommands"
+import "../../support";
 
 // Alternatively you can use CommonJS syntax:
 // require('./commands')

@@ -29,6 +29,7 @@ if (Cypress.env("TL_RUN_ID") != null) {
 
   beforeEach(() => {
     resetData();
+    testStartTime = new Date().toISOString();
     cy.task("clearReporterData");
     cy.task("startScreenshots");
     cy.task("generateTlTestId").then((id) => {
@@ -37,6 +38,8 @@ if (Cypress.env("TL_RUN_ID") != null) {
       testsMap.push({
         tlTestId: tlTestId,
         testSequence: testsCount,
+        startedTestsAt: testStartTime,
+        endedTestsAt: testEndTime,
         spec: { file: Cypress.spec, test: Cypress.currentTest },
       });
     });
@@ -70,6 +73,7 @@ if (Cypress.env("TL_RUN_ID") != null) {
   let subjectObj = {};
   let tlTestId;
   let testsCount = 0;
+  let testStartTime, testEndTime;
 
   function resetData() {
     firstVisit = true;
@@ -79,6 +83,8 @@ if (Cypress.env("TL_RUN_ID") != null) {
     snapshotMetaDataArray = [];
     snapshotID = 0;
     subjectObj = {};
+    testStartTime = 0;
+    testEndTime = 0;
   }
 
   Cypress.on("command:start", ({ attributes }) => {
@@ -173,7 +179,7 @@ if (Cypress.env("TL_RUN_ID") != null) {
 
   afterEach(() => {
     cy.task("pauseScreenshots");
-
+    testEndTime = new Date().toISOString();
     cypressCommands = sortArrayByTimestamp(cypressCommands);
     if (snapshotsMapArray.length > 0) {
       mapSnapshotID(cypressCommands, snapshotsMapArray);
@@ -192,6 +198,9 @@ if (Cypress.env("TL_RUN_ID") != null) {
     cy.task("writeConsoleLogsToFile", tlTestId);
     cy.task("writeHarToFile", tlTestId);
     cy.task("cropScreenshots", tlTestId);
+
+    //update the test map with the results
+    testsMap[testsMap.length - 1].endedTestsAt = testEndTime;
   });
 
   after(() => {

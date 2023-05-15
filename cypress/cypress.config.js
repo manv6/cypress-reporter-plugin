@@ -13,8 +13,9 @@ async function setupNodeEvents(on, config) {
 module.exports = defineConfig({
   projectId: "eh6mxr",
   videoCompression: 20,
+  video: false,
   e2e: {
-    baseUrl: "http://overloop.io",
+    baseUrl: "https://overloop.io",
     supportFile: "./support/e2e.{js,jsx,ts,tsx}",
     specPattern: [
       "e2e/**/*.feature",
