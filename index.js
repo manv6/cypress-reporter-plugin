@@ -34,7 +34,7 @@ const install = (on, options) => {
   let newMessageLog = [];
   let harLogs = [];
   let images = [];
-  let failedTests = [];
+  let testResults = [];
   let takeScreenshots;
   let counter = Math.floor(Math.random() * 1000000 + 1);
   let stopScreenshots = false;
@@ -509,15 +509,15 @@ const install = (on, options) => {
   on("before:browser:launch", browserLaunchHandler);
 
   function createFailedTestsFile() {
-    if (failedTests.length > 0) {
-      try {
-        fse.outputFileSync(
-          `./logs/${reporterOptions.runId}/results/failed-${Date.now()}.json`,
-          JSON.stringify(failedTests)
-        );
-      } catch (e) {
-        console.log(`${reporterLog} Error saving the failed tests file: `, e);
-      }
+    try {
+      fse.outputFileSync(
+        `./logs/${
+          reporterOptions.runId
+        }/results/testResults-${Date.now()}.json`,
+        JSON.stringify(testResults)
+      );
+    } catch (e) {
+      console.log(`${reporterLog} Error saving the failed tests file: `, e);
     }
   }
 
@@ -623,18 +623,19 @@ const install = (on, options) => {
         tlTestId,
         startedTestsAt,
         endedTestsAt,
+        spec,
       } of testMap) {
         const test = results.tests[testSequence - 1];
         testTlIds.push(tlTestId);
         const runs = [{ tests: [test], testId: tlTestId }];
         const resultFile = { runs, startedTestsAt, endedTestsAt };
-        if (test.state === "failed") {
-          failedTests.push({
-            testId: tlTestId,
-            title: test.title.slice(-1)[0],
-            status: "failed",
-          });
-        }
+        testResults.push({
+          testId: tlTestId,
+          title: test.title.slice(-1)[0],
+          titlePath: spec.test.titlePath,
+          status: test.state,
+          pathToTest: spec.file.relative,
+        });
         const filePath = `./logs/${reporterOptions.runId}/${tlTestId}/cypress/results.json`;
         fse.writeFileSync(filePath, JSON.stringify(resultFile));
       }
