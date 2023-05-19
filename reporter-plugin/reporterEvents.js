@@ -35,10 +35,17 @@ if (Cypress.env("TL_RUN_ID") != null) {
   beforeEach(() => {
     resetData();
     // If scenario is scenario outline
-    if (endsWithPattern(Cypress.currentTest.title, "\\(example #\\d+\\)")) {
+    if (
+      endsWithPattern(Cypress.currentTest.title, "\\(example #\\d+\\)") &&
+      scenarioOutlineCounter > 0
+    ) {
       forceNewTestId = true;
+    } else if (
+      endsWithPattern(Cypress.currentTest.title, "\\(example #\\d+\\)") &&
+      scenarioOutlineCounter === 0
+    ) {
+      scenarioOutlineCounter++;
     }
-
     testStartTime = new Date().toISOString();
     cy.task("clearReporterData");
     cy.task("startScreenshots");
@@ -81,6 +88,7 @@ if (Cypress.env("TL_RUN_ID") != null) {
   let testsMap = [];
   let forceNewTestId = false;
   let snapshotID = 0;
+  let scenarioOutlineCounter = 0;
   let subjectObj = {};
   let tlTestId;
   let testsCount = 0;
