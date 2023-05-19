@@ -198,8 +198,8 @@ const install = (on, options) => {
       setRunPath();
       return reporterOptions;
     },
-    generateTlTestId: (forceNewTestId) => {
-      if (reporterOptions.tlTestId !== undefined && !forceNewTestId) {
+    generateTlTestId: () => {
+      if (reporterOptions.tlTestId !== undefined) {
         return reporterOptions.tlTestId;
       } else return v4();
     },
