@@ -198,8 +198,8 @@ const install = (on, options) => {
       setRunPath();
       return reporterOptions;
     },
-    generateTlTestId: () => {
-      if (reporterOptions.tlTestId !== undefined) {
+    generateTlTestId: (forceNewTestId) => {
+      if (reporterOptions.tlTestId !== undefined && !forceNewTestId) {
         return reporterOptions.tlTestId;
       } else return v4();
     },
@@ -278,115 +278,114 @@ const install = (on, options) => {
 
     connect: async () => {
       async function tryConnect() {
-        if (!cdp) {
-          try {
-            debugLog(
-              `Attempting to connect to Chrome Debugging Protocol on port ${portForCDP}`
-            );
-            const HOST = "127.0.0.1";
+        try {
+          debugLog(
+            `Attempting to connect to Chrome Debugging Protocol on port ${portForCDP}`
+          );
+          const HOST = "127.0.0.1";
 
-            cdp = await connect({
-              port: portForCDP,
-              host: HOST,
-            });
+          cdp = await connect({
+            port: portForCDP,
+            host: HOST,
+          });
 
-            debugLog("Connected to Chrome Debugging Protocol");
-            //----------------------------------------------------------------
-            /** captures logs from console.X calls */
-            await cdp.Runtime.enable();
-            await cdp.Page.enable();
-            await cdp.Network.enable();
+          debugLog("Connected to Chrome Debugging Protocol");
+          //----------------------------------------------------------------
+          /** captures logs from console.X calls */
+          await cdp.Runtime.enable();
+          await cdp.Page.enable();
+          await cdp.Network.enable();
 
-            cdp.Runtime.consoleAPICalled(logConsole);
-            /** captures logs from network calls */
-            cdp.Page.frameStartedLoading((params) =>
-              writeHarLogs(params, "Page.frameStartedLoading")
-            );
-            cdp.Page.frameRequestedNavigation((params) =>
-              writeHarLogs(params, "Page.frameRequestedNavigation")
-            );
-            cdp.Page.navigatedWithinDocument((params) =>
-              writeHarLogs(params, "Page.navigatedWithinDocument")
-            );
-            cdp.Network.requestWillBeSent((params) =>
-              writeHarLogs(params, "Network.requestWillBeSent")
-            );
-            cdp.Network.requestServedFromCache((params) =>
-              writeHarLogs(params, "Network.requestServedFromCache")
-            );
-            cdp.Network.requestWillBeSentExtraInfo((params) =>
-              writeHarLogs(params, "Network.requestWillBeSentExtraInfo")
-            );
-            cdp.Network.responseReceivedExtraInfo((params) =>
-              writeHarLogs(params, "Network.responseReceivedExtraInfo")
-            );
-            cdp.Network.responseReceived(async (params) => {
-              writeHarLogs(params, "Network.responseReceived");
-              const response = params.response;
-              const requestId = params.requestId;
-              if (
-                response.status !== 204 &&
-                response.headers.location == null &&
-                !response.mimeType.includes("image") &&
-                !response.mimeType.includes("audio") &&
-                !response.mimeType.includes("video")
-              ) {
-                cdp.Network.loadingFinished(async (loadingFinishedParams) => {
-                  if (loadingFinishedParams.requestId === requestId) {
-                    try {
-                      const responseBody = await cdp.send(
-                        "Network.getResponseBody",
-                        {
-                          requestId,
-                        }
-                      );
-                      params.response = {
-                        ...params.response,
-                        body: Buffer.from(
-                          responseBody.body,
-                          responseBody.base64Encoded ? "base64" : undefined
-                        ).toString(),
-                      };
-                    } catch (err) {
-                      // Fail silently, so we don't stop the execution
-                    }
+          cdp.Runtime.consoleAPICalled(logConsole);
+          /** captures logs from network calls */
+          cdp.Page.frameStartedLoading((params) =>
+            writeHarLogs(params, "Page.frameStartedLoading")
+          );
+          cdp.Page.frameRequestedNavigation((params) =>
+            writeHarLogs(params, "Page.frameRequestedNavigation")
+          );
+          cdp.Page.navigatedWithinDocument((params) =>
+            writeHarLogs(params, "Page.navigatedWithinDocument")
+          );
+          cdp.Network.requestWillBeSent((params) =>
+            writeHarLogs(params, "Network.requestWillBeSent")
+          );
+          cdp.Network.requestServedFromCache((params) =>
+            writeHarLogs(params, "Network.requestServedFromCache")
+          );
+          cdp.Network.requestWillBeSentExtraInfo((params) =>
+            writeHarLogs(params, "Network.requestWillBeSentExtraInfo")
+          );
+          cdp.Network.responseReceivedExtraInfo((params) =>
+            writeHarLogs(params, "Network.responseReceivedExtraInfo")
+          );
+          cdp.Network.responseReceived(async (params) => {
+            writeHarLogs(params, "Network.responseReceived");
+            const response = params.response;
+            const requestId = params.requestId;
+            if (
+              response.status !== 204 &&
+              response.headers.location == null &&
+              !response.mimeType.includes("image") &&
+              !response.mimeType.includes("audio") &&
+              !response.mimeType.includes("video")
+            ) {
+              cdp.Network.loadingFinished(async (loadingFinishedParams) => {
+                if (loadingFinishedParams.requestId === requestId) {
+                  try {
+                    const responseBody = await cdp.send(
+                      "Network.getResponseBody",
+                      {
+                        requestId,
+                      }
+                    );
+                    params.response = {
+                      ...params.response,
+                      body: Buffer.from(
+                        responseBody.body,
+                        responseBody.base64Encoded ? "base64" : undefined
+                      ).toString(),
+                    };
+                  } catch (err) {
+                    // Fail silently, so we don't stop the execution
                   }
-                });
-              }
-            });
-            cdp.Network.dataReceived((params) =>
-              writeHarLogs(params, "Network.dataReceived")
-            );
-            cdp.Network.loadingFinished((params) =>
-              writeHarLogs(params, "Network.loadingFinished")
-            );
-            cdp.Page.loadEventFired((params) =>
-              writeHarLogs(params, "Page.loadEventFired")
-            );
-            cdp.Page.domContentEventFired((params) =>
-              writeHarLogs(params, "Page.domContentEventFired")
-            );
-            cdp.Page.frameAttached((params) =>
-              writeHarLogs(params, "Page.frameAttached")
-            );
-            cdp.Network.loadingFailed((params) =>
-              writeHarLogs(params, "Network.loadingFailed")
-            );
-            cdp.Network.resourceChangedPriority((params) =>
-              writeHarLogs(params, "Network.resourceChangedPriority")
-            );
-            // cdp.Page.lifecycleEvent(writeHarToFile);
-            //----------------------------------------------------------------
-            cdp.on("disconnect", () => {
-              debugLog("Chrome Debugging Protocol disconnected");
-            });
-          } catch (err) {
-            console.error("Failed to connect to Chrome - ", err);
-            setTimeout(tryConnect, 1000);
-          }
-          return cdp;
+                }
+              });
+            }
+          });
+          cdp.Network.dataReceived((params) =>
+            writeHarLogs(params, "Network.dataReceived")
+          );
+          cdp.Network.loadingFinished((params) =>
+            writeHarLogs(params, "Network.loadingFinished")
+          );
+          cdp.Page.loadEventFired((params) =>
+            writeHarLogs(params, "Page.loadEventFired")
+          );
+          cdp.Page.domContentEventFired((params) =>
+            writeHarLogs(params, "Page.domContentEventFired")
+          );
+          cdp.Page.frameAttached((params) =>
+            writeHarLogs(params, "Page.frameAttached")
+          );
+          cdp.Network.loadingFailed((params) =>
+            writeHarLogs(params, "Network.loadingFailed")
+          );
+          cdp.Network.resourceChangedPriority((params) =>
+            writeHarLogs(params, "Network.resourceChangedPriority")
+          );
+          // cdp.Page.lifecycleEvent(writeHarToFile);
+          //----------------------------------------------------------------
+          cdp.on("disconnect", () => {
+            debugLog("Chrome Debugging Protocol disconnected");
+          });
+        } catch (err) {
+          console.error("Failed to connect to Chrome - ", err);
+          setTimeout(tryConnect, 1000);
         }
+        return cdp;
       }
+
       tryConnect();
 
       return null;
@@ -436,17 +435,16 @@ const install = (on, options) => {
     },
     //TODO add width,height and interval to be parameterized
     screenshot: async () => {
-      if (cdp !== (undefined || null)) {
-        takeScreenshots = setInterval(async () => {
-          if (!stopScreenshots && startScreenshots) {
-            let capturedImage = await cdp.Page.captureScreenshot();
-            images.push({
-              content: capturedImage.data,
-              timestamp: Date.now(),
-            });
-          }
-        }, 800);
-      }
+      takeScreenshots = setInterval(async () => {
+        if (!stopScreenshots && startScreenshots) {
+          let capturedImage = await cdp.Page.captureScreenshot();
+          images.push({
+            content: capturedImage.data,
+            timestamp: Date.now(),
+          });
+        }
+      }, 800);
+
       return null;
     },
     stopScreenshots: () => {
@@ -635,6 +633,8 @@ const install = (on, options) => {
           titlePath: spec.test.titlePath,
           status: test.state,
           pathToTest: spec.file.relative,
+          startedTestsAt,
+          endedTestsAt,
         });
         const filePath = `./logs/${reporterOptions.runId}/${tlTestId}/cypress/results.json`;
         fse.writeFileSync(filePath, JSON.stringify(resultFile));

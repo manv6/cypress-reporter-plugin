@@ -27,12 +27,22 @@ if (Cypress.env("TL_RUN_ID") != null) {
     cy.task("screenshot");
   });
 
+  function endsWithPattern(str, pattern) {
+    var regex = new RegExp(pattern + "$");
+    return regex.test(str);
+  }
+
   beforeEach(() => {
     resetData();
+    // If scenario is scenario outline
+    if (endsWithPattern(Cypress.currentTest.title, "\\(example #\\d+\\)")) {
+      forceNewTestId = true;
+    }
+
     testStartTime = new Date().toISOString();
     cy.task("clearReporterData");
     cy.task("startScreenshots");
-    cy.task("generateTlTestId").then((id) => {
+    cy.task("generateTlTestId", forceNewTestId).then((id) => {
       tlTestId = id;
       testsCount++;
       testsMap.push({
@@ -69,6 +79,7 @@ if (Cypress.env("TL_RUN_ID") != null) {
   let snapshotsMapArray = [];
   let snapshotMetaDataArray = [];
   let testsMap = [];
+  let forceNewTestId = false;
   let snapshotID = 0;
   let subjectObj = {};
   let tlTestId;
@@ -77,6 +88,7 @@ if (Cypress.env("TL_RUN_ID") != null) {
 
   function resetData() {
     firstVisit = true;
+    forceNewTestId = false;
     firstVisitUrl;
     cypressCommands = [];
     snapshotsMapArray = [];
