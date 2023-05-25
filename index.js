@@ -9,6 +9,7 @@ let reporterOptions = {
   executeFrom: "",
   customResultsPath: "",
   uploadResultsToS3: false,
+  s3Region: "",
 };
 
 const install = (on, options) => {
@@ -24,8 +25,6 @@ const install = (on, options) => {
   const { v4 } = require("uuid");
   const colors = require("colors");
   colors.enable();
-
-  const s3Client = new S3Client({ region: process.env.REGION });
 
   let portForCDP;
   let cdp;
@@ -172,7 +171,7 @@ const install = (on, options) => {
       reporterOptions.s3BucketName = envVars[3];
       reporterOptions.customResultsPath = envVars[4];
       reporterOptions.uploadResultsToS3 = envVars[5];
-
+      reporterOptions.s3Region = envVars[6] || process.env.AWS_REGION;
       // Handle special cases for reporter options
       const valuesToIgnoreForResultsPath = [
         "null",
@@ -543,6 +542,7 @@ const install = (on, options) => {
     }
 
     async function createEmptyFile(bucketName, fileKey) {
+      const s3Client = new S3Client({ region: reporterOptions.s3Region });
       const putObjectCommand = new PutObjectCommand({
         Bucket: bucketName,
         Key: fileKey,
@@ -576,7 +576,7 @@ const install = (on, options) => {
       await sendFilesToS3(videosFolder, `s3://${s3RunPath}/video`);
 
       async function sendFilesToS3(localPath, s3Path) {
-        const s3Client = new S3Client({ region: process.env.REGION });
+        const s3Client = new S3Client({ region: reporterOptions.s3Region });
         const { sync } = new S3SyncClient({ client: s3Client });
         try {
           console.log(

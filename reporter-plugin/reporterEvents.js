@@ -22,6 +22,7 @@ if (Cypress.env("TL_RUN_ID") != null) {
       Cypress.env("TL_S3_BUCKET_NAME"),
       Cypress.env("TL_CUSTOM_RESULTS_PATH"),
       Cypress.env("TL_UPLOAD_RESULTS_TO_S3"),
+      Cypress.env("TL_S3_REGION"),
     ]);
     cy.connectToCDP().wait(100);
     cy.task("screenshot");
