@@ -10,6 +10,7 @@ let reporterOptions = {
   customResultsPath: "",
   uploadResultsToS3: false,
   s3Region: "",
+  recordVideo: false,
 };
 
 const install = (on, options) => {
@@ -172,6 +173,7 @@ const install = (on, options) => {
       reporterOptions.customResultsPath = envVars[4];
       reporterOptions.uploadResultsToS3 = envVars[5];
       reporterOptions.s3Region = envVars[6] || process.env.AWS_REGION;
+      reporterOptions.recordVideo = envVars[7];
       // Handle special cases for reporter options
       const valuesToIgnoreForResultsPath = [
         "null",
@@ -202,7 +204,7 @@ const install = (on, options) => {
         return reporterOptions.tlTestId;
       } else return v4();
     },
-    async writeTestsMapToFile(testsMap) {
+    writeTestsMapToFile: (testsMap) => {
       const jsonString = JSON.stringify(testsMap);
       let x = counter;
       // Write the JSON to a file
@@ -213,7 +215,7 @@ const install = (on, options) => {
       return null;
     },
 
-    async writeConsoleLogsToFile(path) {
+    writeConsoleLogsToFile: (path) => {
       const jsonString = JSON.stringify(messageLog);
       // Write the txt console logs
       const consoleLogsPath = `./logs/${reporterOptions.runId}/${path}/console`;
@@ -227,7 +229,7 @@ const install = (on, options) => {
       return null;
     },
 
-    async writeHarToFile(path) {
+    writeHarToFile: (path) => {
       const har = harFromMessages(harLogs, {
         includeTextFromResponseBody: true,
       });
@@ -573,20 +575,47 @@ const install = (on, options) => {
       reporterOptions.uploadResultsToS3 == "true"
     ) {
       await sendFilesToS3(logsFolder, `s3://${s3RunPath}`);
-      await sendFilesToS3(videosFolder, `s3://${s3RunPath}/video`);
 
-      async function sendFilesToS3(localPath, s3Path) {
+      if (reporterOptions.recordVideo) {
+        await sendFilesToS3(videosFolder, `s3://${s3RunPath}/video`);
+      }
+
+      async function sendFilesToS3(localPath, s3Path, retryCount = 0) {
         const s3Client = new S3Client({ region: reporterOptions.s3Region });
         const { sync } = new S3SyncClient({ client: s3Client });
-        try {
-          console.log(
-            `${reporterLog} Begin syncing local files from path ${localPath} to s3`
-          );
-          await sync(localPath, s3Path);
-          console.log(`${reporterLog} Finish syncing local folder`);
-        } catch (error) {
-          console.log(`${reporterLog} Failed to sync files`, error);
-        }
+
+        const retryDelay = 1000; // Retry delay in milliseconds
+        const maxRetries = 3; // Maximum number of retries
+
+        return new Promise((resolve, reject) => {
+          const syncFiles = async () => {
+            try {
+              console.log(
+                `${reporterLog} Begin syncing local files from path ${localPath} to s3`
+              );
+              await sync(localPath, s3Path);
+              console.log(`${reporterLog} Finish syncing local folder`);
+              resolve();
+            } catch (error) {
+              console.log(`${reporterLog} Failed to sync files`, error);
+
+              if (retryCount < maxRetries) {
+                console.log(
+                  `${reporterLog} Retrying (${retryCount + 1}/${maxRetries})...`
+                );
+                setTimeout(syncFiles, retryDelay);
+                retryCount++;
+              } else {
+                console.log(
+                  `${reporterLog} Maximum retries reached. Aborting sync.`
+                );
+                reject(new Error("Maximum retries reached")); // Reject the promise when maximum retries are reached
+              }
+            }
+          };
+
+          syncFiles();
+        });
       }
     }
   }
