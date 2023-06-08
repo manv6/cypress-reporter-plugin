@@ -6,6 +6,7 @@
   "scripts": {
     "regression": "npx cypress run --spec regression/otf.spec.js",
     "test:single": "npx cypress run --spec e2e/overloop.feature --browser chromium --headless",
+    "test:folder": "npx cypress run --spec e2e --browser chromium --headless",
     "test:local": "npm run clear:logs && npx cypress run --spec e2e --browser chromium --headless",
     "testerloop-local-one": "npx tl --spec e2e/overloop-one-test.feature --browser chromium",
     "clear:logs": "rm -rf logs",

@@ -204,14 +204,9 @@ const install = (on, options) => {
         return reporterOptions.tlTestId;
       } else return v4();
     },
-    writeTestsMapToFile: (testsMap) => {
-      const jsonString = JSON.stringify(testsMap);
-      let x = counter;
-      // Write the JSON to a file
-      const testsMapPath = `./logs/${reporterOptions.runId}/results/`;
-      const fileName = `testsMap${x}.json`;
-      fse.outputFileSync(`${testsMapPath}/${fileName}`, jsonString);
-      testMap = testsMap;
+
+    addTestMapping: (testMapping) => {
+      testMap.push(testMapping);
       return null;
     },
 
@@ -507,7 +502,7 @@ const install = (on, options) => {
   // Load the chrome options inside the event
   on("before:browser:launch", browserLaunchHandler);
 
-  function createFailedTestsFile() {
+  function createTestsResultsFile() {
     try {
       fse.outputFileSync(
         `./logs/${
@@ -517,19 +512,6 @@ const install = (on, options) => {
       );
     } catch (e) {
       console.log(`${reporterLog} Error saving the failed tests file: `, e);
-    }
-  }
-
-  function updateResultsFiles() {
-    try {
-      for (const id of testTlIds) {
-        const filePath = `./logs/${reporterOptions.runId}/${id}/cypress/results.json`;
-        let results = JSON.parse(fse.readFileSync(filePath, "utf8"));
-        results = { ...results, ...addedResults };
-        fse.writeFileSync(filePath, JSON.stringify(results));
-      }
-    } catch (err) {
-      console.log("Error updating results file", err.message);
     }
   }
 
@@ -591,13 +573,13 @@ const install = (on, options) => {
           const syncFiles = async () => {
             try {
               console.log(
-                `${reporterLog} Begin syncing local files from path ${localPath} to s3`
+                `${reporterLog} Begin syncing local log files from path ${localPath} to s3`
               );
               await sync(localPath, s3Path);
               console.log(`${reporterLog} Finish syncing local folder`);
               resolve();
             } catch (error) {
-              console.log(`${reporterLog} Failed to sync files`, error);
+              console.log(`${reporterLog} Failed to sync files`);
 
               if (retryCount < maxRetries) {
                 console.log(
@@ -620,42 +602,26 @@ const install = (on, options) => {
     }
   }
 
-  on("after:run", async (results) => {
-    try {
-      addedResults = {
-        status: results.status,
-        browserVersion: results.browserVersion,
-      };
-      createFailedTestsFile();
-      updateResultsFiles();
-      await uploadFilesToS3();
-      await createAndPutCompleteFile();
-    } catch (err) {
-      console.log(`${reporterLog} Error uploading files to s3`, err.message);
-    }
-  });
-
   on("after:spec", async (spec, results) => {
-    let x = counter;
     try {
-      const testMap = JSON.parse(
-        fse.readFileSync(
-          `./logs/${reporterOptions.runId}/results/testsMap${x}.json`,
-          "utf8"
-        )
-      );
-
       for (const {
         testSequence,
         tlTestId,
         startedTestsAt,
         endedTestsAt,
         spec,
+        browserVersion,
       } of testMap) {
         const test = results.tests[testSequence - 1];
         testTlIds.push(tlTestId);
         const runs = [{ tests: [test], testId: tlTestId }];
-        const resultFile = { runs, startedTestsAt, endedTestsAt };
+        const resultFile = {
+          runs,
+          startedTestsAt,
+          endedTestsAt,
+          browserVersion,
+          status: "finished",
+        };
         testResults.push({
           testId: tlTestId,
           title: test.title.slice(-1)[0],
@@ -669,9 +635,19 @@ const install = (on, options) => {
         fse.writeFileSync(filePath, JSON.stringify(resultFile));
       }
     } catch (err) {
-      console.log(`${reporterLog} Error saving cypress duration`, err.message);
+      console.log(
+        `${reporterLog} Error saving cypress test files`,
+        err.message
+      );
+    } finally {
+      createTestsResultsFile();
+      await uploadFilesToS3();
+      await createAndPutCompleteFile();
+      // Reset the test results for the following spec iteration
+      testResults = [];
+      testTlIds = [];
+      testMap = [];
     }
-    counter++;
   });
 };
 

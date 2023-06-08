@@ -43,6 +43,7 @@ if (Cypress.env("TL_RUN_ID") != null) {
         startedTestsAt: testStartTime,
         endedTestsAt: testEndTime,
         spec: { file: Cypress.spec, test: Cypress.currentTest },
+        browserVersion: Cypress.browser.version,
       });
     });
   });
@@ -200,12 +201,8 @@ if (Cypress.env("TL_RUN_ID") != null) {
     cy.task("writeConsoleLogsToFile", tlTestId);
     cy.task("writeHarToFile", tlTestId);
     cy.task("cropScreenshots", tlTestId);
-
     //update the test map with the results
     testsMap[testsMap.length - 1].endedTestsAt = testEndTime;
-  });
-
-  after(() => {
-    cy.task("writeTestsMapToFile", testsMap);
+    cy.task("addTestMapping", testsMap[testsMap.length - 1]);
   });
 }
