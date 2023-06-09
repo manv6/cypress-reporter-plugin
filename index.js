@@ -25,6 +25,7 @@ const install = (on, options) => {
   const S3SyncClient = require("s3-sync-client");
   const { v4 } = require("uuid");
   const colors = require("colors");
+  const path = require("path");
   colors.enable();
 
   let portForCDP;
@@ -556,10 +557,42 @@ const install = (on, options) => {
       reporterOptions.uploadResultsToS3 === true ||
       reporterOptions.uploadResultsToS3 == "true"
     ) {
+      await countFilesToUpload(logsFolder);
       await sendFilesToS3(logsFolder, `s3://${s3RunPath}`);
 
       if (reporterOptions.recordVideo) {
+        await countFilesToUpload(videosFolder);
         await sendFilesToS3(videosFolder, `s3://${s3RunPath}/video`);
+      }
+
+      async function countFilesToUpload(dir) {
+        const debug = require("debug")("s3");
+        const filesToUpload = [];
+        const foldersToUpload = [];
+        const processFolder = (folderPath) => {
+          const files = fse.readdirSync(folderPath);
+
+          for (const file of files) {
+            const filePath = path.join(folderPath, file);
+            const stats = fse.lstatSync(filePath);
+
+            if (stats.isFile()) {
+              filesToUpload.push(filePath);
+            } else if (stats.isDirectory()) {
+              foldersToUpload.push(filePath);
+              processFolder(filePath); // Recursively process subfolders
+            }
+          }
+        };
+
+        processFolder(dir); // Start with the initial directory
+        filesToUpload.sort();
+        console.log(
+          `${reporterLog} Found a total of ${filesToUpload.length} files to upload (DEBUG=s3 to display them)`
+        );
+        for (const file of filesToUpload) {
+          debug(`Found file: `, file);
+        }
       }
 
       async function sendFilesToS3(localPath, s3Path, retryCount = 0) {
@@ -569,7 +602,7 @@ const install = (on, options) => {
         const retryDelay = 1000; // Retry delay in milliseconds
         const maxRetries = 3; // Maximum number of retries
 
-        return new Promise((resolve, reject) => {
+        return new Promise(async (resolve, reject) => {
           const syncFiles = async () => {
             try {
               console.log(
@@ -595,8 +628,7 @@ const install = (on, options) => {
               }
             }
           };
-
-          syncFiles();
+          await syncFiles();
         });
       }
     }
