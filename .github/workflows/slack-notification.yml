@@ -23,7 +23,7 @@ jobs:
               run_id: context.runId
             });
             console.log(workflowRun.data.status);
-            return workflowRun.data.status
+            core.setOutput('status', workflowRun.data.status);
 
       - name: Get latest release
         if: steps.status.outputs.status == 'completed'
@@ -37,14 +37,13 @@ jobs:
             });
             const latestRelease = releases.data[0];
             console.log(latestRelease.tag_name);
-            return latestRelease.tag_name
+            core.setOutput('tag_name', latestRelease.tag_name);
 
       - name: Send Slack notification
-        if: steps.status.outputs.status == 'completed'
-        uses: rtCamp/action-slack-notify@v3
+        uses: rtCamp/action-slack-notify@v2
         env:
           SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
           SLACK_MESSAGE: |
             Build & Publish Testerloop Reporter Package workflow completed successfully.
 
-            Latest Release: [${{ steps.release.outputs.release }}](https://github.com/${{ github.repository }}/releases/latest)
+            Latest Release: *[ ${{ steps.release.outputs.tag_name }} ]* (https://github.com/${{ github.repository }}/releases/latest)
