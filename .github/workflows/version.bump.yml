@@ -1,0 +1,52 @@
+name: Version Bump
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  version-bump:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Bump Version
+        run: |
+          # Get the current version number
+          VERSION=$(node -p "require('./package.json').version")
+          # Bump the version
+          npm version patch --no-git-tag-version
+          # Get the new version number
+          NEW_VERSION=$(node -p "require('./package.json').version")
+          # Update the package.json file with the new version number
+          sed -i -e "s/\"version\": \"$VERSION\"/\"version\": \"$NEW_VERSION\"/g" package.json
+          # Export the new version number as an environment variable
+          echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
+
+      - name: Commit Changes
+        uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          commit_message: "Bump version to ${{ env.NEW_VERSION }}"
+          file_pattern: "package.json"
+          commit_options: "--no-verify"
+          push_options: "--no-verify"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build Release
+        uses: actions/create-release@v1
+        with:
+          tag_name: "beta-${{ env.NEW_VERSION }}"
+          release_name: "Release ${{ env.NEW_VERSION }}"
+          body: "Release ${{ env.NEW_VERSION }}"
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
