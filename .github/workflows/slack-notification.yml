@@ -1,0 +1,50 @@
+name: Slack Notification for new Cypress Reporter Version
+
+on:
+  workflow_dispatch:
+  workflow_run:
+    workflows: ["Build & Publish Testerloop Reporter Package"]
+    types:
+      - completed
+
+jobs:
+  send-notification:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check workflow status
+        id: status
+        uses: actions/github-script@v4
+        with:
+          script: |
+            const workflowRun = await github.actions.getWorkflowRun({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              run_id: context.runId
+            });
+            console.log(workflowRun.data.status);
+            return workflowRun.data.status
+
+      - name: Get latest release
+        if: steps.status.outputs.status == 'completed'
+        id: release
+        uses: actions/github-script@v4
+        with:
+          script: |
+            const releases = await github.repos.listReleases({
+              owner: context.repo.owner,
+              repo: context.repo.repo
+            });
+            const latestRelease = releases.data[0];
+            console.log(latestRelease.tag_name);
+            return latestRelease.tag_name
+
+      - name: Send Slack notification
+        if: steps.status.outputs.status == 'completed'
+        uses: rtCamp/action-slack-notify@v3
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+          SLACK_MESSAGE: |
+            Build & Publish Testerloop Reporter Package workflow completed successfully.
+
+            Latest Release: [${{ steps.release.outputs.release }}](https://github.com/${{ github.repository }}/releases/latest)
