@@ -1,6 +1,7 @@
 name: Slack Notification for new Cypress Reporter Version
 
 on:
+  workflow_dispatch:
   workflow_run:
     workflows: ["Build & Publish Testerloop Reporter Package"]
     types:
