@@ -26,7 +26,7 @@ const install = (on, options) => {
   const { v4 } = require("uuid");
   const colors = require("colors");
   const path = require("path");
-  const { removeCircularRef } = require("./reporter-plugin/reporterFunctions")
+  const { removeCircularRef } = require("./reporter-plugin/reporterFunctions");
   colors.enable();
 
   let portForCDP;
@@ -167,6 +167,9 @@ const install = (on, options) => {
   }
 
   on("task", {
+    downloads: (downloadspath) => {
+      return fs.readdirSync(downloadspath);
+    },
     getReporterOptions: async (envVars) => {
       reporterOptions.runId = envVars[0] || process.env.TL_RUN_ID;
       reporterOptions.tlTestId = envVars[1] || process.env.TL_TEST_ID;

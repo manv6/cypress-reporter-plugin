@@ -15,7 +15,7 @@ module.exports = defineConfig({
   videoCompression: 20,
   video: false,
   e2e: {
-    baseUrl: "https://overloop.io",
+    baseUrl: "http://overloop.io/",
     supportFile: "./support/e2e.{js,jsx,ts,tsx}",
     specPattern: [
       "e2e/**/*.feature",

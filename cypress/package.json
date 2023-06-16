@@ -4,13 +4,13 @@
   "description": "Cypress Tests for Testerloop",
   "main": "index.js",
   "scripts": {
-    "regression": "npx cypress run --spec regression/otf.spec.js",
-    "test:single": "npx cypress run --spec e2e/overloop.feature --browser chromium --headless",
+    "regression": "npx cypress run --spec regression/otf.spec.js --browser chrome",
+    "test:single": "CYPRESS_TL_RUN_ID=123 CYPRESS_TL_TEST_ID=123 npx cypress run --spec e2e/overloop-one-test.feature --browser chromium --headless",
     "test:folder": "npx cypress run --spec e2e --browser chromium --headless",
     "test:local": "npm run clear:logs && npx cypress run --spec e2e --browser chromium --headless",
-    "testerloop-local-one": "npx tl --spec e2e/overloop-one-test.feature --browser chromium",
+    "testerloop-local-one": "rm -rf ./logs && CYPRESS_TL_RUN_ID=123 CYPRESS_TL_TEST_ID=123 npx cypress run --spec e2e/overloop-one-test.feature --browser chrome",
     "clear:logs": "rm -rf logs",
-    "test": "DEBUG=cypress:*  npm run clear:logs && npm run test:single ; npm run regression"
+    "test": "npm run clear:logs && npm run test:single ; npm run regression"
   },
   "cypress-cucumber-preprocessor": {
     "stepDefinitions": "./steps/**/*.{js,ts}",
@@ -31,8 +31,8 @@
   },
   "homepage": "https://github.com/overloop-io/cypress-poc#readme",
   "dependencies": {
-    "@badeball/cypress-cucumber-preprocessor": "15.0.0",
-    "@cypress/browserify-preprocessor": "3.0.2",
-    "cypress": "12.8.1"
+    "@badeball/cypress-cucumber-preprocessor": "^18.0.1",
+    "@cypress/browserify-preprocessor": "^3.0.2",
+    "cypress": "^12.14.0"
   }
 }

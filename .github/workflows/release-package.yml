@@ -31,17 +31,25 @@ jobs:
 
       - name: Login to GitHub Package Registry
         run: echo "//npm.pkg.github.com/:_authToken=${{secrets.NPM_TOKEN}}" >> ~/.npmrc
+
+      - name: Update package list
+        run: sudo apt-get update
+
+      - name: Install chromium browser
+        run: |
+          sudo apt-get install chromium-browser
+
+      - name: List Chromium installation folder
+        run: |
+          ls -la /usr/bin/
+          ls -la /usr/local/bin/
+          ls -la /snap/bin/
+      - name: Install Cypress
+        run: |
+          cd cypress
+          npm install
+          npm test
+          # sudo ln -sf /usr/bin/chromium-browser /usr/local/share/chromium/chrome-linux/chrome
       - run: npm publish
         env:
           NODE_AUTH_TOKEN: ${{secrets.GITHUB_TOKEN}}
-
-  notify:
-    needs: publish-gpr
-    runs-on: ubuntu-latest
-    steps:
-      - name: Trigger Slack notification workflow
-        uses: peter-evans/repository-dispatch@v1
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          repository: ${{ github.repository }}
-          event-type: slack-notification

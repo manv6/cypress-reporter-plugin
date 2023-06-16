@@ -1,7 +1,7 @@
 import { Given, When, Then } from "@badeball/cypress-cucumber-preprocessor";
 
 Given(/I visit overloop's website/, () => {
-  cy.visit("https://overloop.io/");
+  cy.visit("/");
 });
 
 When(/I navigate to (.*) page/, (page) => {
