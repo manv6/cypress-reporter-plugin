@@ -26,7 +26,7 @@ const install = (on, options) => {
   const { v4 } = require("uuid");
   const colors = require("colors");
   const path = require("path");
-  const { removeCircularRef } = require("./reporter-plugin/reporterFunctions");
+  const { circularReplacer } = require("./reporter-plugin/reporterFunctions");
   colors.enable();
 
   let portForCDP;
@@ -421,7 +421,7 @@ const install = (on, options) => {
       return null;
     },
     saveCypressOutput: (obj) => {
-      const blob = removeCircularRef(obj.contents);
+      const blob = JSON.stringify(obj.contents, circularReplacer());
 
       try {
         fse.outputFileSync(
