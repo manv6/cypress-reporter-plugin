@@ -27,6 +27,7 @@ const install = (on, options) => {
   const colors = require("colors");
   const path = require("path");
   const { circularReplacer } = require("./reporter-plugin/reporterFunctions");
+  const debug = require("debug");
   colors.enable();
 
   let portForCDP;
@@ -570,7 +571,7 @@ const install = (on, options) => {
       }
 
       async function countFilesToUpload(dir) {
-        const debug = require("debug")("s3");
+        const log = debug("s3");
         const filesToUpload = [];
         const foldersToUpload = [];
         const processFolder = (folderPath) => {
@@ -595,7 +596,7 @@ const install = (on, options) => {
           `${reporterLog} Found a total of ${filesToUpload.length} files to upload (DEBUG=s3 to display them)`
         );
         for (const file of filesToUpload) {
-          debug(`Found file: `, file);
+          log(`Found file: `, file);
         }
       }
 
@@ -639,7 +640,9 @@ const install = (on, options) => {
   }
 
   on("after:spec", async (spec, results) => {
+    const log = debug("TESTS");
     try {
+      log("Results after:spec", results);
       for (const {
         testSequence,
         tlTestId,
@@ -658,9 +661,10 @@ const install = (on, options) => {
           browserVersion,
           status: "finished",
         };
+        log("Found test: ", test);
         testResults.push({
           testId: tlTestId,
-          title: test.title.slice(-1)[0],
+          title: spec.test.titlePath.slice(-1)[0] || test.title,
           titlePath: spec.test.titlePath,
           status: test.state,
           pathToTest: spec.file.relative,
