@@ -209,22 +209,32 @@ function replaceUrls(baseUrl, style) {
   };
 }
 
-function removeCircularRef(obj) {
-  let cache = [];
-  let str = JSON.stringify(obj, function(key, value) {
-    if (typeof value === "object" && value !== null) {
-      if (cache.indexOf(value) !== -1) {
-        // Circular reference found, discard key
-        return;
-      }
-      // Store value in our collection
-      cache.push(value);
-    }
-    return value;
-  });
-  cache = null; // reset the cache
-  return str;
-}
+const circularReplacer = () => {
+  
+  // Creating new WeakSet to keep 
+  // track of previously seen objects
+  const seen = new WeakSet();
+    
+  return (key, value) => {
+
+      // If type of value is an 
+      // object or value is null
+      if (typeof(value) === "object" 
+                && value !== null) {
+        
+      // If it has been seen before
+      if (seen.has(value)) {
+               return 'Object';
+           }
+             
+           // Add current value to the set
+           seen.add(value);
+     }
+       
+     // return the value
+     return value;
+ };
+};
 
 module.exports = {
   getHTML,
@@ -237,5 +247,5 @@ module.exports = {
   generateSnapMetaData,
   grabInteractedElements,
   updateLastSnapshotProperties,
-  removeCircularRef
+  circularReplacer
 };
