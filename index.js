@@ -39,11 +39,9 @@ const install = (on, options) => {
   let images = [];
   let testResults = [];
   let takeScreenshots;
-  let counter = Math.floor(Math.random() * 1000000 + 1);
   let stopScreenshots = false;
   let startScreenshots = false;
   let testMap = [];
-  let addedResults = {};
   let testTlIds = [];
 
   const reporterLog = colors.yellow("[testerloop-reporter]");
@@ -212,7 +210,9 @@ const install = (on, options) => {
     },
 
     addTestMapping: (testMapping) => {
+      const testsLogMessage = debug("TESTS");
       testMap.push(testMapping);
+      testsLogMessage("Test added to testMap: ", testMapping);
       return null;
     },
 
@@ -521,6 +521,31 @@ const install = (on, options) => {
     }
   }
 
+  function createResultsFile(tlTestId, resultFile) {
+    try {
+      const filePath = `./logs/${reporterOptions.runId}/${tlTestId}/cypress/results.json`;
+      fse.writeFileSync(filePath, JSON.stringify(resultFile));
+    } catch (e) {
+      console.log(
+        `${reporterLog} Error creating the results.json file for test ${tlTestId}: `,
+        e
+      );
+    }
+  }
+
+  function createCypressTestsResultsFile(cypressResults) {
+    try {
+      fse.outputFileSync(
+        `./logs/${
+          reporterOptions.runId
+        }/results/cypressResults-${Date.now()}.json`,
+        JSON.stringify(cypressResults)
+      );
+    } catch (e) {
+      console.log(`${reporterLog} Error saving the failed tests file: `, e);
+    }
+  }
+
   async function createAndPutCompleteFile() {
     for (const test of testMap) {
       // Set the bucket name and file key
@@ -627,7 +652,7 @@ const install = (on, options) => {
                 retryCount++;
               } else {
                 console.log(
-                  `${reporterLog} Maximum retries reached. Aborting sync.`
+                  `${reporterLog} Maximum retries reached. Aborting sync. \nCheck your reporter options and internet connection`
                 );
                 reject(new Error("Maximum retries reached")); // Reject the promise when maximum retries are reached
               }
@@ -640,9 +665,12 @@ const install = (on, options) => {
   }
 
   on("after:spec", async (spec, results) => {
-    const log = debug("TESTS");
+    const testsLogMessage = debug("TESTS");
     try {
-      log("Results after:spec", results);
+      testsLogMessage(
+        "Tests in testMap to create results: ",
+        JSON.stringify(testMap)
+      );
       for (const {
         testSequence,
         tlTestId,
@@ -661,7 +689,8 @@ const install = (on, options) => {
           browserVersion,
           status: "finished",
         };
-        log("Found test: ", test);
+        testsLogMessage("Results: found test with title: ", test.title);
+        testsLogMessage("Results found test spec: ", spec);
         testResults.push({
           testId: tlTestId,
           title: spec.test.titlePath.slice(-1)[0] || test.title,
@@ -671,9 +700,9 @@ const install = (on, options) => {
           startedTestsAt,
           endedTestsAt,
         });
-        const filePath = `./logs/${reporterOptions.runId}/${tlTestId}/cypress/results.json`;
-        fse.writeFileSync(filePath, JSON.stringify(resultFile));
+        createResultsFile(tlTestId, resultFile);
       }
+      testsLogMessage("Test results: ", JSON.stringify(testResults));
     } catch (err) {
       console.log(
         `${reporterLog} Error saving cypress test files`,
@@ -681,6 +710,7 @@ const install = (on, options) => {
       );
     } finally {
       createTestsResultsFile();
+      createCypressTestsResultsFile(results);
       await uploadFilesToS3();
       await createAndPutCompleteFile();
       // Reset the test results for the following spec iteration

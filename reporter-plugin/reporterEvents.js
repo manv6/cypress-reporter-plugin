@@ -36,10 +36,9 @@ if (Cypress.env("TL_RUN_ID") != null) {
     cy.task("startScreenshots");
     cy.task("generateTlTestId").then((id) => {
       tlTestId = id;
-      testsCount++;
       testsMap.push({
         tlTestId: tlTestId,
-        testSequence: testsCount,
+        testSequence: testsMap.length + 1,
         startedTestsAt: testStartTime,
         endedTestsAt: testEndTime,
         spec: { file: Cypress.spec, test: Cypress.currentTest },
@@ -75,7 +74,6 @@ if (Cypress.env("TL_RUN_ID") != null) {
   let snapshotID = 0;
   let subjectObj = {};
   let tlTestId;
-  let testsCount = 0;
   let testStartTime, testEndTime;
 
   function resetData() {

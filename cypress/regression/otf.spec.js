@@ -79,10 +79,28 @@ it('Test otf test output files - "console-logs.json"', () => {
   });
 });
 
-it('Test otf test output files - "testResults.json"', () => {
+it('Test otf test output files - "cypressResults.json"', () => {
   cy.task("downloads", "logs/123/results/").then((files) => {
     console.log("FILES: ", files);
     cy.readFile("logs/123/results/" + files[0]).then((contents) => {
+      assert.exists(contents.stats);
+      assert.exists(contents.reporter);
+      assert.exists(contents.reporterStats);
+      assert.exists(contents.hooks);
+      assert.exists(contents.tests[0]);
+      assert.exists(contents.tests[0].testId);
+      assert(contents.error === null, "Error should be null");
+      assert(contents.video === null, "Video should be null");
+      assert.exists(contents.screenshots[0]);
+      assert.exists(contents.spec);
+    });
+  });
+});
+
+it('Test otf test output files - "testResults.json"', () => {
+  cy.task("downloads", "logs/123/results/").then((files) => {
+    console.log("FILES: ", files);
+    cy.readFile("logs/123/results/" + files[1]).then((contents) => {
       assert.exists(contents[0].testId);
       assert.exists(contents[0].title);
       assert.exists(contents[0].titlePath);
