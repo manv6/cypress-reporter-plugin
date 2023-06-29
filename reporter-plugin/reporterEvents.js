@@ -38,7 +38,6 @@ if (Cypress.env("TL_RUN_ID") != null) {
       tlTestId = id;
       testsMap.push({
         tlTestId: tlTestId,
-        testSequence: testsMap.length + 1,
         startedTestsAt: testStartTime,
         endedTestsAt: testEndTime,
         spec: { file: Cypress.spec, test: Cypress.currentTest },

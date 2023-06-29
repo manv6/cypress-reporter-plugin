@@ -671,15 +671,15 @@ const install = (on, options) => {
         "Tests in testMap to create results: ",
         JSON.stringify(testMap)
       );
+      let testCounter = 0;
       for (const {
-        testSequence,
         tlTestId,
         startedTestsAt,
         endedTestsAt,
         spec,
         browserVersion,
       } of testMap) {
-        const test = results.tests[testSequence - 1];
+        const test = results.tests[testCounter];
         testTlIds.push(tlTestId);
         const runs = [{ tests: [test], testId: tlTestId }];
         const resultFile = {
@@ -701,6 +701,7 @@ const install = (on, options) => {
           endedTestsAt,
         });
         createResultsFile(tlTestId, resultFile);
+        testCounter++;
       }
       testsLogMessage("Test results: ", JSON.stringify(testResults));
     } catch (err) {
@@ -717,6 +718,7 @@ const install = (on, options) => {
       testResults = [];
       testTlIds = [];
       testMap = [];
+      testCounter = 0;
     }
   });
 };
