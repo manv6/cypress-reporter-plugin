@@ -161,6 +161,7 @@ if (Cypress.env("TL_RUN_ID") != null) {
         "testId",
         "groupLevel",
         "coords",
+        "selector",
       ];
 
       propsToDelete.forEach((element) => {
@@ -184,6 +185,11 @@ if (Cypress.env("TL_RUN_ID") != null) {
     if (snapshotsMapArray.length > 0) {
       mapSnapshotID(cypressCommands, snapshotsMapArray);
     }
+    Object.keys(cypressCommands).forEach((key) => {
+      if (key.startsWith("__reactInternalInstance")) {
+        delete cypressCommands[key];
+      }
+    });
     cy.task("saveCypressOutput", {
       contents: cypressCommands,
       fileName: "cypress/out.json",
