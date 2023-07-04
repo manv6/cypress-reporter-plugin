@@ -186,10 +186,15 @@ if (Cypress.env("TL_RUN_ID") != null) {
       mapSnapshotID(cypressCommands, snapshotsMapArray);
     }
     Object.keys(cypressCommands).forEach((key) => {
-      if (key.startsWith("__reactInternalInstance")) {
+      if (
+        key.startsWith("__reactInternalInstance") ||
+        key.startsWith("attributes") ||
+        key.startsWith("_ownerElement")
+      ) {
         delete cypressCommands[key];
       }
     });
+
     cy.task("saveCypressOutput", {
       contents: cypressCommands,
       fileName: "cypress/out.json",
