@@ -26,7 +26,6 @@ const install = (on, options) => {
   const { v4 } = require("uuid");
   const colors = require("colors");
   const path = require("path");
-  const { circularReplacer } = require("./reporter-plugin/reporterFunctions");
   const debug = require("debug");
   colors.enable();
 
@@ -422,7 +421,7 @@ const install = (on, options) => {
       return null;
     },
     saveCypressOutput: (obj) => {
-      const blob = JSON.stringify(obj.contents, circularReplacer());
+      const blob = JSON.stringify(obj.contents);
 
       try {
         fse.outputFileSync(

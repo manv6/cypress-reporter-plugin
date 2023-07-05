@@ -19,6 +19,7 @@ it('Test otf test output files - "out.json"', () => {
     assert.exists(contents[0].options.name);
     assert.exists(contents[0].options.message);
     assert.exists(contents[0].options.groupStart);
+    assert.exists(contents[1].options.group);
     assert.exists(contents[0].options.type);
     assert.exists(contents[0].options.timeout);
     assert.exists(contents[0].options.event);

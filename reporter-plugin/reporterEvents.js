@@ -143,34 +143,33 @@ if (Cypress.env("TL_RUN_ID") != null) {
     ) {
       logsAlreadyExecuted.push(options.id);
 
-      const propsToDelete = [
-        "viewportHeight",
-        "viewportWidth",
-        "subject",
-        "snapshots",
-        "snapshot",
-        "chainerId",
-        "renderProps",
-        "highlightAttr",
-        "numElements",
-        "visible",
-        "consoleProps",
-        "$el",
-        "testCurrentRetry",
-        "hookId",
-        "testId",
-        "groupLevel",
-        "coords",
-        "selector",
+      const propsToKeep = [
+        "name",
+        "message",
+        "groupStart",
+        "type",
+        "timeout",
+        "event",
+        "id",
+        "state",
+        "instrument",
+        "url",
+        "wallClockStartedAt",
+        "ended",
+        "group",
+        "err",
       ];
 
-      propsToDelete.forEach((element) => {
-        if (options.hasOwnProperty(element)) {
-          delete options[element];
+      for (const prop in options) {
+        if (!propsToKeep.includes(prop)) {
+          delete options[prop];
         }
-      });
+      }
 
-      if (!options.hasOwnProperty("displayName")) {
+      if (
+        !options.hasOwnProperty("displayName") &&
+        options.name !== "request"
+      ) {
         cypressCommands.push({
           options,
         });
@@ -185,15 +184,6 @@ if (Cypress.env("TL_RUN_ID") != null) {
     if (snapshotsMapArray.length > 0) {
       mapSnapshotID(cypressCommands, snapshotsMapArray);
     }
-    Object.keys(cypressCommands).forEach((key) => {
-      if (
-        key.startsWith("__reactInternalInstance") ||
-        key.startsWith("attributes") ||
-        key.startsWith("_ownerElement")
-      ) {
-        delete cypressCommands[key];
-      }
-    });
 
     cy.task("saveCypressOutput", {
       contents: cypressCommands,
