@@ -27,6 +27,7 @@ const install = (on, options) => {
   const colors = require("colors");
   const path = require("path");
   const debug = require("debug");
+  const { initializeLogger } = require("./reporter-plugin/logger/logger");
   colors.enable();
 
   let portForCDP;
@@ -42,6 +43,7 @@ const install = (on, options) => {
   let startScreenshots = false;
   let testMap = [];
   let testTlIds = [];
+  let logger;
 
   const reporterLog = colors.yellow("[testerloop-reporter]");
   let s3RunPath;
