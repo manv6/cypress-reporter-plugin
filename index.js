@@ -205,9 +205,19 @@ const install = (on, options) => {
       return reporterOptions;
     },
     generateTlTestId: () => {
+      let id;
       if (reporterOptions.tlTestId !== undefined) {
-        return reporterOptions.tlTestId;
-      } else return v4();
+        id = reporterOptions.tlTestId;
+      } else {
+        id = v4();
+      }
+      logger = initializeLogger(
+        reporterOptions.s3BucketName,
+        reporterOptions.customPath,
+        reporterOptions.runId,
+        id
+      );
+      return id;
     },
 
     addTestMapping: (testMapping) => {
@@ -395,6 +405,7 @@ const install = (on, options) => {
     },
 
     log: (message) => {
+      logger.info(message, { message });
       console.log(message);
       return null;
     },
@@ -518,6 +529,8 @@ const install = (on, options) => {
         JSON.stringify(testResults)
       );
     } catch (e) {
+      logger.error("Error saving the failed tests file:", { e });
+      logger.debug("Error saving the failed tests file:", e);
       console.log(`${reporterLog} Error saving the failed tests file: `, e);
     }
   }
@@ -527,6 +540,14 @@ const install = (on, options) => {
       const filePath = `./logs/${reporterOptions.runId}/${tlTestId}/cypress/results.json`;
       fse.writeFileSync(filePath, JSON.stringify(resultFile));
     } catch (e) {
+      logger.error(
+        "Error creating the results.json file for test ${tlTestId} ",
+        { e }
+      );
+      logger.debug(
+        "Error creating the results.json file for test ${tlTestId} ",
+        e
+      );
       console.log(
         `${reporterLog} Error creating the results.json file for test ${tlTestId}: `,
         e
@@ -543,6 +564,8 @@ const install = (on, options) => {
         JSON.stringify(cypressResults)
       );
     } catch (e) {
+      logger.error("Error saving the failed tests file:", { e });
+      logger.debug("Error saving the failed tests file", e);
       console.log(`${reporterLog} Error saving the failed tests file: `, e);
     }
   }
@@ -568,6 +591,8 @@ const install = (on, options) => {
       try {
         await s3Client.send(putObjectCommand);
       } catch (err) {
+        logger.error("Error creating file:" + fileKey, { err });
+        logger.debug("Error creating file:" + fileKey, err);
         console.log(`${reporterLog} Error creating file: ` + fileKey, err);
       }
     }
@@ -618,6 +643,9 @@ const install = (on, options) => {
 
         processFolder(dir); // Start with the initial directory
         filesToUpload.sort();
+        logger.info(
+          `${reporterLog} Found a total of ${filesToUpload.length} files to upload (DEBUG=s3 to display them)`
+        );
         console.log(
           `${reporterLog} Found a total of ${filesToUpload.length} files to upload (DEBUG=s3 to display them)`
         );
@@ -636,22 +664,34 @@ const install = (on, options) => {
         return new Promise(async (resolve, reject) => {
           const syncFiles = async () => {
             try {
+              logger.info(
+                `${reporterLog} Begin syncing local log files from path ${localPath} to s3`
+              );
               console.log(
                 `${reporterLog} Begin syncing local log files from path ${localPath} to s3`
               );
               await sync(localPath, s3Path);
+              logger.info(`${reporterLog} Finish syncing local folder`);
               console.log(`${reporterLog} Finish syncing local folder`);
               resolve();
             } catch (error) {
+              logger.error("${reporterLog} Failed to sync files", { error });
+              logger.debug("${reporterLog} Failed to sync files", error);
               console.log(`${reporterLog} Failed to sync files`);
 
               if (retryCount < maxRetries) {
+                logger.info(
+                  `${reporterLog} Retrying (${retryCount + 1}/${maxRetries})...`
+                );
                 console.log(
                   `${reporterLog} Retrying (${retryCount + 1}/${maxRetries})...`
                 );
                 setTimeout(syncFiles, retryDelay);
                 retryCount++;
               } else {
+                logger.info(
+                  `${reporterLog} Maximum retries reached. Aborting sync. \nCheck your reporter options and internet connection`
+                );
                 console.log(
                   `${reporterLog} Maximum retries reached. Aborting sync. \nCheck your reporter options and internet connection`
                 );
@@ -706,6 +746,8 @@ const install = (on, options) => {
       }
       testsLogMessage("Test results: ", JSON.stringify(testResults));
     } catch (err) {
+      logger.error(`${reporterLog} Error saving cypress test files`, { err });
+      logger.debug(`${reporterLog} Error saving cypress test files`, err);
       console.log(
         `${reporterLog} Error saving cypress test files`,
         err.message
