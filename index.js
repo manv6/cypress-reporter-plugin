@@ -179,6 +179,11 @@ const install = (on, options) => {
       reporterOptions.uploadResultsToS3 = envVars[5];
       reporterOptions.s3Region = envVars[6] || process.env.AWS_REGION;
       reporterOptions.recordVideo = envVars[7];
+      logger = initializeLogger(
+        reporterOptions.s3BucketName,
+        reporterOptions.customResultsPath,
+        reporterOptions.runId
+      );
       // Handle special cases for reporter options
       const valuesToIgnoreForResultsPath = [
         "null",
@@ -196,7 +201,7 @@ const install = (on, options) => {
       console.log(`${reporterLog} Reporter configuration:`);
       for (let key in reporterOptions) {
         if (key !== "tlTestId") {
-          console.log(
+          logger.info(
             `   ${colors.cyan(key)}: ${colors.white(reporterOptions[key])}`
           );
         }
@@ -205,19 +210,9 @@ const install = (on, options) => {
       return reporterOptions;
     },
     generateTlTestId: () => {
-      let id;
       if (reporterOptions.tlTestId !== undefined) {
-        id = reporterOptions.tlTestId;
-      } else {
-        id = v4();
-      }
-      logger = initializeLogger(
-        reporterOptions.s3BucketName,
-        reporterOptions.customPath,
-        reporterOptions.runId,
-        id
-      );
-      return id;
+        return reporterOptions.tlTestId;
+      } else return v4();
     },
 
     addTestMapping: (testMapping) => {

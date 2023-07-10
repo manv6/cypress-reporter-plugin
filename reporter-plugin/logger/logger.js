@@ -14,13 +14,14 @@ function getLogger() {
   return logger;
 }
 
-function initializeLogger(bucketName, customPath, runId, tlTestId) {
+function initializeLogger(bucketName, customPath, runId) {
   if (logger) {
     return logger;
   }
+
   const s3_stream = new S3StreamLogger({
     bucket: bucketName, //make env variable or clip parameter
-    folder: `${customPath}/${runId}/${tlTestId}/logs/`, // env variable or cli parameter
+    folder: `${customPath}/${runId}/logs/`, // env variable or cli parameter
     name_format: "reporter-plugin-logs-%Y-%m-%d-%H-%M-%S-%L",
   });
 
