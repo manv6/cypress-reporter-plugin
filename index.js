@@ -487,8 +487,6 @@ const install = (on, options) => {
       return null;
     },
     cropScreenshots: (path) => {
-      console.log("path: ", path);
-
       // cypress screenshot is always 800 * 600 whatever is the viewport
       const cropConfig = { width: 820, height: 630, top: 0, left: 450 };
       const dir = `./logs/${reporterOptions.runId}/${path}/screenshots/`;
