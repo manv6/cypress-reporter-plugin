@@ -27,7 +27,12 @@ const install = (on, options) => {
   const colors = require("colors");
   const path = require("path");
   const debug = require("debug");
-  colors.enable();
+  const { version } = require("./package.json");
+  const {
+    initializeLogger,
+    silentLog,
+    endLogStream,
+  } = require("./reporter-plugin/logger/logger");
 
   let portForCDP;
   let cdp;
@@ -42,12 +47,10 @@ const install = (on, options) => {
   let startScreenshots = false;
   let testMap = [];
   let testTlIds = [];
+  let logger;
 
-  const reporterLog = colors.yellow("[testerloop-reporter]");
+  let reporterLog = colors.yellow("[testerloop-reporter]");
   let s3RunPath;
-  function log(msg) {
-    console.log(msg);
-  }
 
   function setRunPath() {
     s3RunPath = (
@@ -61,20 +64,35 @@ const install = (on, options) => {
       .replaceAll("//", "/");
   }
 
-  function errorWritingFileLog(obj) {
-    console.log(
-      `${reporterLog} Error saving output file '${obj.fileName}'`,
-      err.message
+  function logReporterOptions() {
+    // Disable or enable the coloring of logs
+    reporterOptions.executeFrom !== "local"
+      ? colors.disable()
+      : colors.enable();
+    // Resetting the reporterLog so the disabling takes effect
+    reporterLog = colors.yellow("[testerloop-reporter]");
+
+    logger.info(`‣ Testerloop Reporter configuration:`);
+    logger.info(
+      `  ${colors.cyan("Reporter version")} ${colors.white(version)}`
     );
+    for (let key in reporterOptions) {
+      if (key !== "tlTestId") {
+        logger.info(
+          `  ${colors.cyan(key)}: ${colors.white(reporterOptions[key])}`
+        );
+      }
+    }
   }
 
-  function debugLog(msg) {
-    // suppress with DEBUG=-otf-reporter
-    if (process.env.DEBUG && process.env.DEBUG.includes("-otf-reporter")) {
-      return;
-    }
-
-    log(`${reporterLog} ${msg}`);
+  function errorWritingFileLog(obj, err) {
+    logger.error(`${reporterLog} Error saving output file '${obj.fileName}'`, {
+      err,
+    });
+    logger.debug(
+      `${reporterLog} Error saving output file '${obj.fileName}'`,
+      err
+    );
   }
 
   function isChrome(browser) {
@@ -103,8 +121,8 @@ const install = (on, options) => {
 
   async function browserLaunchHandler(browser = {}, launchOptions) {
     if (!isChrome(browser)) {
-      return debugLog(
-        `Warning: An unsupported browser family was used, output will not be logged to console: ${browser.family}`
+      return logger.warning(
+        `An unsupported browser family was used, output will not be logged to console: ${browser.family}`
       );
     }
     // Cypress has already provided a debugging port so we just grab it from there
@@ -177,6 +195,11 @@ const install = (on, options) => {
       reporterOptions.uploadResultsToS3 = envVars[5];
       reporterOptions.s3Region = envVars[6] || process.env.AWS_REGION;
       reporterOptions.recordVideo = envVars[7];
+      logger = initializeLogger(
+        reporterOptions.s3BucketName,
+        reporterOptions.customResultsPath,
+        reporterOptions.runId
+      );
       // Handle special cases for reporter options
       const valuesToIgnoreForResultsPath = [
         "null",
@@ -190,15 +213,8 @@ const install = (on, options) => {
       if (valuesToIgnoreForResultsPath.includes(envVars[2])) {
         reporterOptions.executeFrom = "local";
       }
+      logReporterOptions();
 
-      console.log(`${reporterLog} Reporter configuration:`);
-      for (let key in reporterOptions) {
-        if (key !== "tlTestId") {
-          console.log(
-            `   ${colors.cyan(key)}: ${colors.white(reporterOptions[key])}`
-          );
-        }
-      }
       setRunPath();
       return reporterOptions;
     },
@@ -280,8 +296,8 @@ const install = (on, options) => {
     connect: async () => {
       async function tryConnect() {
         try {
-          debugLog(
-            `Attempting to connect to Chrome Debugging Protocol on port ${portForCDP}`
+          logger.info(
+            `${reporterLog} Attempting to connect to Chrome Debugging Protocol on port ${portForCDP}`
           );
           const HOST = "127.0.0.1";
 
@@ -290,7 +306,7 @@ const install = (on, options) => {
             host: HOST,
           });
 
-          debugLog("Connected to Chrome Debugging Protocol");
+          logger.info(`${reporterLog} Connected to Chrome Debugging Protocol`);
           //----------------------------------------------------------------
           /** captures logs from console.X calls */
           await cdp.Runtime.enable();
@@ -377,31 +393,22 @@ const install = (on, options) => {
           );
           // cdp.Page.lifecycleEvent(writeHarToFile);
           //----------------------------------------------------------------
-          cdp.on("disconnect", () => {
-            debugLog("Chrome Debugging Protocol disconnected");
+          cdp.on("disconnect", async () => {
+            logger.info(
+              `${reporterLog} Chrome Debugging Protocol disconnected`
+            );
           });
         } catch (err) {
-          console.error("Failed to connect to Chrome - ", err);
+          logger.error(`${reporterLog} Failed to connect to Chrome - `, {
+            err,
+          });
+          logger.debug(`${reporterLog} Failed to connect to Chrome - `, err);
           setTimeout(tryConnect, 1000);
         }
         return cdp;
       }
 
       tryConnect();
-
-      return null;
-    },
-
-    log: (message) => {
-      console.log(message);
-      return null;
-    },
-    save: (obj) => {
-      try {
-        fse.outputFileSync(`./logs/${reporterOptions.runId}/test.txt`, obj);
-      } catch (err) {
-        errorWritingFileLog(obj);
-      }
 
       return null;
     },
@@ -415,7 +422,7 @@ const install = (on, options) => {
           blob
         );
       } catch (err) {
-        errorWritingFileLog(obj);
+        errorWritingFileLog(obj, err);
       }
 
       return null;
@@ -429,7 +436,7 @@ const install = (on, options) => {
           blob
         );
       } catch (err) {
-        errorWritingFileLog(obj);
+        errorWritingFileLog(obj, err);
       }
 
       return null;
@@ -516,7 +523,8 @@ const install = (on, options) => {
         JSON.stringify(testResults)
       );
     } catch (e) {
-      console.log(`${reporterLog} Error saving the failed tests file: `, e);
+      logger.error(`${reporterLog} Error saving the failed tests file:`, { e });
+      logger.debug(`${reporterLog} Error saving the failed tests file:`, e);
     }
   }
 
@@ -525,8 +533,12 @@ const install = (on, options) => {
       const filePath = `./logs/${reporterOptions.runId}/${tlTestId}/cypress/results.json`;
       fse.writeFileSync(filePath, JSON.stringify(resultFile));
     } catch (e) {
-      console.log(
-        `${reporterLog} Error creating the results.json file for test ${tlTestId}: `,
+      logger.error(
+        `${reporterLog} Error creating the results.json file for test ${tlTestId} `,
+        { e }
+      );
+      logger.debug(
+        `${reporterLog} Error creating the results.json file for test ${tlTestId} `,
         e
       );
     }
@@ -541,7 +553,8 @@ const install = (on, options) => {
         JSON.stringify(cypressResults)
       );
     } catch (e) {
-      console.log(`${reporterLog} Error saving the failed tests file: `, e);
+      logger.error(`${reporterLog} Error saving the failed tests file:`, { e });
+      logger.debug(`${reporterLog} Error saving the failed tests file`, e);
     }
   }
 
@@ -566,7 +579,8 @@ const install = (on, options) => {
       try {
         await s3Client.send(putObjectCommand);
       } catch (err) {
-        console.log(`${reporterLog} Error creating file: ` + fileKey, err);
+        logger.error(`${reporterLog} Error creating file:` + fileKey, { err });
+        logger.debug(`${reporterLog} Error creating file:` + fileKey, err);
       }
     }
   }
@@ -616,7 +630,7 @@ const install = (on, options) => {
 
         processFolder(dir); // Start with the initial directory
         filesToUpload.sort();
-        console.log(
+        logger.info(
           `${reporterLog} Found a total of ${filesToUpload.length} files to upload (DEBUG=s3 to display them)`
         );
         for (const file of filesToUpload) {
@@ -634,23 +648,26 @@ const install = (on, options) => {
         return new Promise(async (resolve, reject) => {
           const syncFiles = async () => {
             try {
-              console.log(
+              logger.info(
                 `${reporterLog} Begin syncing local log files from path ${localPath} to s3`
               );
+
               await sync(localPath, s3Path);
-              console.log(`${reporterLog} Finish syncing local folder`);
+              logger.info(`${reporterLog} Finish syncing local folder`);
               resolve();
             } catch (error) {
-              console.log(`${reporterLog} Failed to sync files`);
+              logger.error(`${reporterLog} Failed to sync files`, { error });
+              logger.debug(`${reporterLog} Failed to sync files`, error);
 
               if (retryCount < maxRetries) {
-                console.log(
+                logger.info(
                   `${reporterLog} Retrying (${retryCount + 1}/${maxRetries})...`
                 );
+
                 setTimeout(syncFiles, retryDelay);
                 retryCount++;
               } else {
-                console.log(
+                logger.warning(
                   `${reporterLog} Maximum retries reached. Aborting sync. \nCheck your reporter options and internet connection`
                 );
                 reject(new Error("Maximum retries reached")); // Reject the promise when maximum retries are reached
@@ -664,12 +681,16 @@ const install = (on, options) => {
   }
 
   on("after:spec", async (spec, results) => {
-    const testsLogMessage = debug("TESTS");
     try {
-      testsLogMessage(
-        "Tests in testMap to create results: ",
-        JSON.stringify(testMap)
+      logger.debug(
+        `Tests in testMap to create results: ${JSON.stringify(testMap)}`
       );
+
+      silentLog(logger, { message: "Silent log Test Map: ", testMap });
+      silentLog(logger, {
+        message: "Silent log After Spec Results:  ",
+        results,
+      });
       let testCounter = 0;
       for (const {
         tlTestId,
@@ -688,8 +709,9 @@ const install = (on, options) => {
           browserVersion,
           status: "finished",
         };
-        testsLogMessage("Results: found test with title: ", test.title);
-        testsLogMessage("Results found test spec: ", spec);
+        logger.debug(`Results: found test with title: ${test.title}`, {
+          test: test.title,
+        });
         testResults.push({
           testId: tlTestId,
           title: spec.test.titlePath.slice(-1)[0] || test.title,
@@ -702,17 +724,19 @@ const install = (on, options) => {
         createResultsFile(tlTestId, resultFile);
         testCounter++;
       }
-      testsLogMessage("Test results: ", JSON.stringify(testResults));
+      logger.debug(`Test results: `, {
+        testResults: JSON.stringify(testResults),
+      });
+      silentLog(logger, { message: "Silent log Test Results: ", testResults });
     } catch (err) {
-      console.log(
-        `${reporterLog} Error saving cypress test files`,
-        err.message
-      );
+      logger.error(`${reporterLog} Error saving cypress test files`, { err });
+      logger.debug(`${reporterLog} Error saving cypress test files`, err);
     } finally {
       createTestsResultsFile();
       createCypressTestsResultsFile(results);
       await uploadFilesToS3();
       await createAndPutCompleteFile();
+      await endLogStream();
       // Reset the test results for the following spec iteration
       testResults = [];
       testTlIds = [];
