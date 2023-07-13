@@ -489,7 +489,6 @@ const install = (on, options) => {
     cropScreenshots: (path) => {
       // cypress screenshot is always 800 * 600 whatever is the viewport
       const cropConfig = { width: 820, height: 630, top: 0, left: 450 };
-
       const dir = `./logs/${reporterOptions.runId}/${path}/screenshots/`;
       if (fs.existsSync(dir)) {
         const files = fs.readdirSync(dir);
@@ -506,7 +505,6 @@ const install = (on, options) => {
           });
         }
       }
-
       return null;
     },
   });
@@ -681,67 +679,72 @@ const install = (on, options) => {
   }
 
   on("after:spec", async (spec, results) => {
-    try {
-      logger.debug(
-        `Tests in testMap to create results: ${JSON.stringify(testMap)}`
-      );
+    if (reporterOptions.runId !== "") {
+      try {
+        logger.debug(
+          `Tests in testMap to create results: ${JSON.stringify(testMap)}`
+        );
 
-      silentLog(logger, { message: "Silent log Test Map: ", testMap });
-      silentLog(logger, {
-        message: "Silent log After Spec Results:  ",
-        results,
-      });
-      let testCounter = 0;
-      for (const {
-        tlTestId,
-        startedTestsAt,
-        endedTestsAt,
-        spec,
-        browserVersion,
-      } of testMap) {
-        const test = results.tests[testCounter];
-        testTlIds.push(tlTestId);
-        const runs = [{ tests: [test], testId: tlTestId }];
-        const resultFile = {
-          runs,
+        silentLog(logger, { message: "Silent log Test Map: ", testMap });
+        silentLog(logger, {
+          message: "Silent log After Spec Results:  ",
+          results,
+        });
+        let testCounter = 0;
+        for (const {
+          tlTestId,
           startedTestsAt,
           endedTestsAt,
+          spec,
           browserVersion,
-          status: "finished",
-        };
-        logger.debug(`Results: found test with title: ${test.title}`, {
-          test: test.title,
+        } of testMap) {
+          const test = results.tests[testCounter];
+          testTlIds.push(tlTestId);
+          const runs = [{ tests: [test], testId: tlTestId }];
+          const resultFile = {
+            runs,
+            startedTestsAt,
+            endedTestsAt,
+            browserVersion,
+            status: "finished",
+          };
+          logger.debug(`Results: found test with title: ${test.title}`, {
+            test: test.title,
+          });
+          testResults.push({
+            testId: tlTestId,
+            title: spec.test.titlePath.slice(-1)[0] || test.title,
+            titlePath: spec.test.titlePath,
+            status: test.state,
+            pathToTest: spec.file.relative,
+            startedTestsAt,
+            endedTestsAt,
+          });
+          createResultsFile(tlTestId, resultFile);
+          testCounter++;
+        }
+        logger.debug(`Test results: `, {
+          testResults: JSON.stringify(testResults),
         });
-        testResults.push({
-          testId: tlTestId,
-          title: spec.test.titlePath.slice(-1)[0] || test.title,
-          titlePath: spec.test.titlePath,
-          status: test.state,
-          pathToTest: spec.file.relative,
-          startedTestsAt,
-          endedTestsAt,
+        silentLog(logger, {
+          message: "Silent log Test Results: ",
+          testResults,
         });
-        createResultsFile(tlTestId, resultFile);
-        testCounter++;
+      } catch (err) {
+        logger.error(`${reporterLog} Error saving cypress test files`, { err });
+        logger.debug(`${reporterLog} Error saving cypress test files`, err);
+      } finally {
+        createTestsResultsFile();
+        createCypressTestsResultsFile(results);
+        await uploadFilesToS3();
+        await createAndPutCompleteFile();
+        await endLogStream();
+        // Reset the test results for the following spec iteration
+        testResults = [];
+        testTlIds = [];
+        testMap = [];
+        testCounter = 0;
       }
-      logger.debug(`Test results: `, {
-        testResults: JSON.stringify(testResults),
-      });
-      silentLog(logger, { message: "Silent log Test Results: ", testResults });
-    } catch (err) {
-      logger.error(`${reporterLog} Error saving cypress test files`, { err });
-      logger.debug(`${reporterLog} Error saving cypress test files`, err);
-    } finally {
-      createTestsResultsFile();
-      createCypressTestsResultsFile(results);
-      await uploadFilesToS3();
-      await createAndPutCompleteFile();
-      await endLogStream();
-      // Reset the test results for the following spec iteration
-      testResults = [];
-      testTlIds = [];
-      testMap = [];
-      testCounter = 0;
     }
   });
 };
