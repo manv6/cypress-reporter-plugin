@@ -3,11 +3,13 @@
   "reporter": {
     "uploadFilesToS3": true,
     "s3BucketName": "otf-lambda-results",
-    "customPath": "steve123"
+    "customPath": "steve123",
+    "region": "eu-west-3"
   },
   "lambda": {
     "lambdaArn": "arn:aws:lambda:eu-west-3:168763042228:function:cypress-lambda",
-    "timeOutInSecs": 120
+    "timeOutInSecs": 120,
+    "region": "eu-west-3"
   },
   "ecs": {
     "taskDefinition": "testerloop:5",
@@ -22,7 +24,8 @@
     ],
     "securityGroups": [
       "sg-0df337b69696c60a4"
-    ]
+    ],
+    "region": "eu-west-3"
   },
   "envVariables": [
     "JOB_ID_STEVE",
