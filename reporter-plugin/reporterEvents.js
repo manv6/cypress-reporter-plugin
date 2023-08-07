@@ -160,16 +160,23 @@ if (Cypress.env("TL_RUN_ID") != null) {
         "err",
       ];
 
+      const errPropsToDelete = ["parsedStack", "docsUrl", "isRecovered"];
+
       for (const prop in options) {
         if (!propsToKeep.includes(prop)) {
           delete options[prop];
         }
+        // Remove the parsedStack property from err because it is creating issues with circular reference in Sony
+        if (prop === "err") {
+          for (const properties in options[prop]) {
+            if (errPropsToDelete.includes(properties)) {
+              delete options[prop][properties];
+            }
+          }
+        }
       }
 
-      if (
-        !options.hasOwnProperty("displayName") &&
-        options.name !== "request"
-      ) {
+      if (!options.hasOwnProperty("displayName")) {
         cypressCommands.push({
           options,
         });

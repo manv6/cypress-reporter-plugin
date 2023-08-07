@@ -1,5 +1,5 @@
 let outPutExpectedLengths = {
-  outFileCommands: 20,
+  outFileCommands: 28,
   snapshotMetadata: 12,
   cypressResults: 1,
   consoleLogs: 20,
