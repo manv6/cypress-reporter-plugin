@@ -10,7 +10,7 @@ env:
   NEW_VERSION: ${{ github.ref_name }}
 
 jobs:
-  test:
+  tests:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -30,7 +30,7 @@ jobs:
           npm test
 
   publish:
-    needs: build
+    needs: tests
     runs-on: ubuntu-latest
     permissions:
       packages: write
