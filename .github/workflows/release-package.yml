@@ -2,8 +2,6 @@ name: Build & Publish Testerloop Reporter Package
 
 on:
   workflow_dispatch:
-  release:
-    types: [created]
 
 jobs:
   build:

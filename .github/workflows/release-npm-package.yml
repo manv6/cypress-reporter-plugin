@@ -1,0 +1,74 @@
+name: Build & Publish Testerloop Reporter Package
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - '*'
+
+env:
+  NEW_VERSION: ${{ github.ref_name }}
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 16
+
+      - name: Install packages
+        run: sudo apt-get update && sudo apt-get install chromium-browser
+
+      - run: npm ci
+
+      - name: Run tests
+        run: |
+          cd cypress
+          npm install
+          npm test
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 16
+          registry-url: https://npm.pkg.github.com/
+      - run: npm ci
+
+      - name: Login to GitHub Package Registry
+        run: echo "//npm.pkg.github.com/:_authToken=${{secrets.NPM_TOKEN}}" >> ~/.npmrc
+
+      - name: Prepare dist
+        run: |
+          npm run build
+          npm run clean:dist
+      - run: npm publish --tag ${{ env.NEW_VERSION }}
+        env:
+          NODE_AUTH_TOKEN: ${{secrets.GITHUB_TOKEN}}
+
+      - name: Build Release
+        uses: actions/create-release@v1
+        with:
+          tag_name: "beta-${{ env.NEW_VERSION }}"
+          release_name: "Release ${{ env.NEW_VERSION }}"
+          body: "Release ${{ env.NEW_VERSION }}"
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Send Slack notification
+        uses: rtCamp/action-slack-notify@v2
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+          SLACK_MESSAGE: |
+            Build & Publish Testerloop Reporter Package workflow completed successfully.
+
+            Latest Release: *[ ${{ steps.release.outputs.tag_name }} ]* (https://github.com/${{ github.repository }}/releases/${{ env.NEW_VERSION }})
