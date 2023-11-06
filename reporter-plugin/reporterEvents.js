@@ -134,10 +134,27 @@ if (Cypress.env("TL_RUN_ID") != null) {
     }
   });
 
+  const filteredTasks = [
+    "addTestMapping",
+    "cropScreenshots",
+    "writeHarToFile",
+    "writeConsoleLogsToFile",
+    "saveScreenshots",
+    "pauseScreenshots",
+    "saveCypressOutput",
+    "generateTlTestId",
+    "startScreenshots",
+    "clearReporterData",
+    "screenshot",
+    "connect",
+    "getReporterOptions",
+  ];
+
   Cypress.on("log:changed", async (options) => {
     if (
       options.state !== "pending" &&
-      options.name !== "task" &&
+      !filteredTasks.includes(options.message) &&
+      !filteredTasks.includes(options.message?.split(", ")[0]) &&
       options.name !== "wait" &&
       !logsAlreadyExecuted.includes(options.id)
     ) {
