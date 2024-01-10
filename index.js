@@ -137,7 +137,6 @@ const install = (on, options) => {
         "--disable-gpu",
         "--no-sandbox",
         "--no-zygote",
-        "--single-process"
       );
     }
 
