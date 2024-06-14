@@ -1,6 +1,6 @@
 {
 	"name": "@testerloop/cypress-reporter-plugin",
-	"version": "1.2.33",
+	"version": "1.2.34",
 	"description": "",
 	"main": "index.js",
 	"scripts": {
@@ -28,7 +28,7 @@
 		"util": "^0.12.5",
 		"uuid": "^9.0.0",
 		"xml-js": "^1.6.11",
-		"s3-streamlogger": "^1.9.0",
+		"s3-streamlogger": "^1.9.4",
 		"winston": "^3.9.0"
 	}
 }
