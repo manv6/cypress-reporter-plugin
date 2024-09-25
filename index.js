@@ -49,7 +49,7 @@ const install = (on, options) => {
   let testTlIds = [];
   let logger;
 
-  let reporterLog = colors.yellow("[testerloop-reporter]");
+  let reporterLog = colors.yellow("cypress-reporter-plugin: ");
   let s3RunPath;
 
   function setRunPath() {
@@ -70,9 +70,9 @@ const install = (on, options) => {
       ? colors.disable()
       : colors.enable();
     // Resetting the reporterLog so the disabling takes effect
-    reporterLog = colors.yellow("[testerloop-reporter]");
+    reporterLog = colors.yellow("cypress-reporter-plugin: ");
 
-    logger.info(`‣ Testerloop Reporter configuration:`);
+    logger.info(`‣ Cypress Reporter plugin configuration:`);
     logger.info(
       `  ${colors.cyan("Reporter version")} ${colors.white(version)}`
     );

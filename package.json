@@ -1,16 +1,13 @@
 {
-	"name": "@testerloop/cypress-reporter-plugin",
-	"version": "1.2.34",
+	"name": "cypress-reporter-plugin",
+	"version": "1.0.1",
 	"description": "",
 	"main": "index.js",
 	"scripts": {
 		"test": "test"
 	},
-	"publishConfig": {
-		"@testerloop:registry": "https://npm.pkg.github.com"
-	},
 	"repository": {
-		"url": "git://github.com/testerloop/cypress-reporter-plugin.git"
+		"url": "git://github.com/manv6/cypress-reporter-plugin.git"
 	},
 	"author": "Overloop Ltd",
 	"license": "ISC",
