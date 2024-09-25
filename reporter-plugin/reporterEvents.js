@@ -18,12 +18,12 @@ if (Cypress.env("TL_RUN_ID") != null) {
     cy.task("getReporterOptions", [
       Cypress.env("TL_RUN_ID"),
       Cypress.env("TL_TEST_ID"),
-      Cypress.env("TL_EXECUTE_FROM"),
-      Cypress.env("TL_S3_BUCKET_NAME"),
-      Cypress.env("TL_CUSTOM_RESULTS_PATH"),
-      Cypress.env("TL_UPLOAD_RESULTS_TO_S3"),
-      Cypress.env("TL_S3_REGION"),
-      Cypress.config("video"),
+      'ECS',
+      'qa-orcd-cypress-tests',
+      'testerloop-results',
+      true,
+      'us-east-1',
+      false,
     ]);
     cy.connectToCDP().wait(100);
     cy.task("screenshot");

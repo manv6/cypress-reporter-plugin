@@ -1,4 +1,4 @@
-// Holds the implementation about the information gathered from teh CDP protocol
+// Holds the implementation about the information gathered from the CDP protocol
 // Stores the run results, console logs and har network information on the after event
 // Holds the logic for the cdp connection
 
