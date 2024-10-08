@@ -137,6 +137,9 @@ const install = (on, options) => {
         "--disable-gpu",
         "--no-sandbox",
         "--no-zygote",
+        "--js-flags=--expose-gc",
+        "--js-flags=--max-old-space-size=3500",
+        "--disable-gl-drawing-for-tests"
       );
     }
 
